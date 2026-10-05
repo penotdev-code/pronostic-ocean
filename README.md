@@ -14,29 +14,17 @@ Un site de pronostics de naissance sur le thème de l'océan, à partager avec l
 
 | | Avant d'avoir joué | Après avoir joué | Après la naissance | Capitaine |
 |---|---|---|---|---|
-| Réponses de chaque joueur | 🔒 | 🔒 | dans le classement final | tout |
+| Réponses de chaque joueur | 🔒 | 🔒 | dans le récap final | tout |
 | Statistiques | 🔒 caché | anonymes | anonymes | détaillées avec les noms |
 | Mots doux des autres | 🔒 | 🔒 | 🔒 | tous |
 
 Ces règles sont appliquées par la base de données elle-même (`firestore.rules`), pas seulement masquées à l'écran : un joueur malin ne peut pas les contourner.
-- **🏆 Le récap final** : une fois la naissance annoncée, la fiche de naissance, le résultat personnel de chacun, le podium, les trophées et le classement complet, où chaque participant peut ouvrir le détail de ses points critère par critère.
+- **🎉 Le récap final** : une fois la naissance annoncée, la fiche de naissance, ce que chacun avait vu juste, les trophées des plus proches et les pronostics de tout le monde comparés à la réalité.
 - Une jauge de profondeur qui descend jusqu'à la fosse des Mariannes quand on fait défiler la page, des bulles, des poissons qui passent (clique dessus !) et quelques surprises cachées 🧰 (indice : le coffre au fond de la mer, et le mot `sirene` tapé au clavier).
 
-### Le barème (100 points)
+### Sans points, sans pression
 
-| Critère | Points max | Règle |
-|---|---|---|
-| Date | 25 | −3 pts par jour d'écart |
-| Heure | 15 | −1 pt par demi-heure d'écart |
-| Poids | 20 | −1 pt par 50 g d'écart |
-| Taille | 10 | −2 pts par cm d'écart |
-| Cheveux | 5 | bonne réponse |
-| Ressemblance | 5 | bonne réponse |
-| Papa au début du travail | 5 | bonne réponse |
-| Maman au début du travail | 5 | bonne réponse |
-| Prénom | 10 | bonne réponse (accents et majuscules ignorés) |
-
-Le barème se modifie dans `js/app.js` (constante `SCORE` et fonction `scoreOf`).
+Il n'y a ni points ni classement : on joue pour le plaisir. À la naissance, le récap montre à chacun pour quelles questions il avait vu juste (ou presque), les trophées de ceux qui étaient le plus proches, et les pronostics de tout le monde comparés à la réalité.
 
 ## ⚙️ Personnaliser
 
@@ -84,7 +72,7 @@ Le site sera sur `https://<ton-projet>.web.app`.
 Tout en bas de la page, clique sur l'ancre **⚓** (ou ajoute `#capitaine` à l'adresse), connecte-toi, puis :
 - **Pronostics ouverts** : décoche pour fermer les paris (par exemple au début du travail 😉).
 - **Date de fin des votes** : fixe un jour et une heure ; le formulaire se ferme tout seul à ce moment-là, et un compte à rebours s'affiche pour les joueurs.
-- **Elle est née !** : saisis les vraies infos puis **🎉 Annoncer la naissance** : le récap final et le classement apparaissent pour tout le monde.
+- **Elle est née !** : saisis les vraies infos puis **🎉 Annoncer la naissance** : le récap final apparaît pour tout le monde.
 - Tu peux aussi supprimer un pronostic (doublon, blague…).
 
 ## 🧪 Tester en local

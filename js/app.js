@@ -30,8 +30,6 @@
     { id: "douche", label: "Sous la douche 🚿" },
     { id: "maternite", label: "Déjà à la maternité 🏥" },
   ];
-  const SCORE = { date: 25, time: 15, weight: 20, height: 10, hair: 5, looks: 5, papaWhere: 5, mamanWhere: 5, name: 10 };
-  const MAX_SCORE = Object.entries(SCORE).reduce((s, [k, v]) => s + (k === "name" && !cfg.guessName ? 0 : v), 0);
 
   /* ---------------- État ---------------- */
   let state = { open: true, born: false, result: null, deadline: 0 };
@@ -126,7 +124,7 @@
   const deadlinePassed = () => !!state.deadline && Date.now() >= state.deadline;
   const votingOpen = () => state.open && !state.born && !deadlinePassed();
 
-  /* ---------------- Score ---------------- */
+  /* ---------------- Comparaison avec la réalité (sans points : on joue sans pression) ---------------- */
   // Écarts entre un pronostic et la réalité
   const DIFF = {
     days: (p, r) => Math.round(Math.abs(parseDay(p.date) - parseDay(r.date)) / DAY),
@@ -140,32 +138,26 @@
   const nameMatch = (p, r) => !!(cfg.guessName && r.babyName && norm(p.babyName) && norm(p.babyName) === norm(r.babyName));
   const same = (p, r, k) => !!(p[k] && r[k] && p[k] === r[k]);
 
-  function scoreOf(p, r) {
-    if (!r) return null;
-    const d = {};
-    const dd = DIFF.days(p, r);
-    d.date = isNaN(dd) ? 0 : Math.max(0, SCORE.date - 3 * dd);
-    const dm = DIFF.minutes(p, r);
-    d.time = isNaN(dm) ? 0 : Math.max(0, SCORE.time - Math.floor(dm / 30));
-    d.weight = Math.max(0, SCORE.weight - Math.floor(DIFF.grams(p, r) / 50));
-    d.height = Math.max(0, SCORE.height - Math.round(2 * DIFF.cm(p, r)));
-    d.hair = same(p, r, "hair") ? SCORE.hair : 0;
-    d.looks = same(p, r, "looks") ? SCORE.looks : 0;
-    d.papaWhere = same(p, r, "papaWhere") ? SCORE.papaWhere : 0;
-    d.mamanWhere = same(p, r, "mamanWhere") ? SCORE.mamanWhere : 0;
-    d.name = nameMatch(p, r) ? SCORE.name : 0;
-    d.total = Object.values(d).reduce((a, b) => a + b, 0);
-    return d;
+  // Les questions où le pronostic était juste, ou tout près
+  function nearHits(p, r) {
+    const hits = [];
+    const d = DIFF.days(p, r);
+    if (d === 0) hits.push("la date 🎯");
+    else if (d === 1) hits.push("la date (à 1 jour près)");
+    const m = DIFF.minutes(p, r);
+    if (m <= 30) hits.push(m === 0 ? "l'heure à la minute près 🎯" : "l'heure (à " + fmtDuration(m) + " près)");
+    const g = DIFF.grams(p, r);
+    if (g <= 100) hits.push(g === 0 ? "le poids au gramme près 🎯" : "le poids (à " + g + " g près)");
+    const c = DIFF.cm(p, r);
+    if (c <= 1) hits.push(c === 0 ? "la taille 🎯" : "la taille (à " + String(c).replace(".", ",") + " cm près)");
+    if (same(p, r, "hair")) hits.push("les cheveux");
+    if (same(p, r, "looks")) hits.push("la ressemblance");
+    if (same(p, r, "papaWhere")) hits.push("où était papa");
+    if (same(p, r, "mamanWhere")) hits.push("où était maman");
+    if (nameMatch(p, r)) hits.push("le prénom 🔮");
+    return hits;
   }
-  /* Classement : les ex æquo partagent la même place */
-  function rankWith(list, r) {
-    const out = list
-      .map((p) => Object.assign({}, p, { score: scoreOf(p, r) }))
-      .sort((a, b) => b.score.total - a.score.total || a.createdAt - b.createdAt);
-    out.forEach((p, i) => (p.rank = i > 0 && p.score.total === out[i - 1].score.total ? out[i - 1].rank : i + 1));
-    return out;
-  }
-  const medal = (rank) => ["🥇", "🥈", "🥉"][rank - 1] || rank + "e";
+  const byName = (list) => list.slice().sort((a, b) => a.name.localeCompare(b.name, "fr"));
 
   /* Trophées rigolos décernés après la naissance */
   function trophies(list, r) {
@@ -188,11 +180,6 @@
     if (both.length) t.push({ icon: "🕵️", title: "Le détective", who: both, detail: "savait où étaient papa et maman" });
     add("🐇", "Le plus pressé", best((p) => parseDay(p.date)), (v) => "la voyait arriver le " + fmtDay(v, { weekday: undefined }));
     add("🐢", "Le plus patient", best((p) => -parseDay(p.date)), (v) => "la voyait arriver le " + fmtDay(-v, { weekday: undefined }));
-    if (list.length > 3) {
-      const rk = rankWith(list, r);
-      const last = rk[rk.length - 1];
-      t.push({ icon: "🐡", title: "Prix du poisson-lune", who: rk.filter((p) => p.rank === last.rank), detail: "on t'aime quand même 💙" });
-    }
     return t;
   }
   function trophiesHtml(list, r) {
@@ -725,55 +712,51 @@
       </div>
       ${r.note ? `<p class="birth-card__note">« ${esc(r.note)} »</p>` : ""}`;
 
-    const list = rankWith(allPreds, r);
+    const list = byName(allPreds);
     const mine = mineIds();
-    $("#podium").innerHTML = list.slice(0, 3).map((p, i) =>
-      `<li class="p${i + 1}"><div class="podium__medal">${medal(p.rank)}</div><div class="podium__avatar">${esc(p.avatar)}</div><div class="podium__name">${esc(p.name)}</div><div class="podium__pts">${p.score.total} / ${MAX_SCORE}</div></li>`
-    ).join("");
-
     const myOnes = list.filter((p) => mine.includes(p.id));
     $("#myResult").hidden = !myOnes.length;
-    $("#myResult").innerHTML = myOnes.map((p) =>
-      `<p>${esc(p.avatar)} <b>${esc(p.name)}</b>, tu termines <b>${p.rank === 1 ? "1re" : p.rank + "e"}</b> sur ${list.length} avec <b>${p.score.total} points</b> ${p.rank <= 3 ? "🏆" : p.rank <= Math.ceil(list.length / 2) ? "👏" : "🐟"}</p>`
-    ).join("");
+    $("#myResult").innerHTML = myOnes.map((p) => {
+      const hits = nearHits(p, r);
+      return `<p>${esc(p.avatar)} <b>${esc(p.name)}</b>, ${hits.length ? "tu avais vu juste pour " + esc(joinFr(hits)) + " 👏" : "pas de réponse dans le mille cette fois, mais quelle jolie bouteille 💙"}</p>`;
+    }).join("");
 
     $("#trophies").innerHTML = trophiesHtml(allPreds, r);
 
     $("#leaderboard").innerHTML = list.length
       ? list.map((p) => `
-        <details class="lb-row${mine.includes(p.id) ? " is-mine" : ""}${p.rank <= 3 ? " lb-row--top" : ""}">
+        <details class="lb-row${mine.includes(p.id) ? " is-mine" : ""}">
           <summary>
-            <span class="lb-row__rank">${medal(p.rank)}</span>
             <span class="lb-row__avatar">${esc(p.avatar)}</span>
             <span class="lb-row__name">${esc(p.name)}</span>
-            <span class="lb-row__bar" aria-hidden="true"><span style="width:${(p.score.total / MAX_SCORE) * 100}%"></span></span>
-            <span class="lb-row__pts">${p.score.total} pts</span>
+            <span class="lb-row__guess">${esc(fmtDay(p.date, { weekday: undefined }))} · ${esc(fmtTime(p.time))}</span>
           </summary>
           ${breakdownHtml(p, r)}
         </details>`).join("")
       : '<p class="empty">Aucun pronostic n\'avait été lancé.</p>';
   }
+  function joinFr(arr) {
+    return arr.length > 1 ? arr.slice(0, -1).join(", ") + " et " + arr[arr.length - 1] : arr[0];
+  }
 
-  /* Détail des points d'un participant, critère par critère */
+  /* Pronostic d'un participant comparé à la réalité, question par question */
   function breakdownHtml(p, r) {
-    const sc = p.score;
     const ecart = (v, unit) => (v === 0 ? "🎯 pile !" : unit(v));
-    const ok = (v) => (v ? "✅" : "❌");
+    const ok = (v) => (v ? "✅" : "–");
     const rows = [
-      ["📅", "Date", fmtDay(p.date, { weekday: undefined }), fmtDay(r.date, { weekday: undefined }), ecart(DIFF.days(p, r), (v) => v + " j"), sc.date, SCORE.date],
-      ["🕰️", "Heure", fmtTime(p.time), fmtTime(r.time), ecart(DIFF.minutes(p, r), fmtDuration), sc.time, SCORE.time],
-      ["⚖️", "Poids", fmtWeight(p.weight), fmtWeight(r.weight), ecart(DIFF.grams(p, r), (v) => v + " g"), sc.weight, SCORE.weight],
-      ["📏", "Taille", fmtHeight(p.height), fmtHeight(r.height), ecart(DIFF.cm(p, r), (v) => String(v).replace(".", ",") + " cm"), sc.height, SCORE.height],
-      ["💇", "Cheveux", labelOf(HAIR, p.hair), labelOf(HAIR, r.hair), ok(sc.hair), sc.hair, SCORE.hair],
-      ["🪞", "Ressemblance", labelOf(LOOKS, p.looks), labelOf(LOOKS, r.looks), ok(sc.looks), sc.looks, SCORE.looks],
-      ["👨", "Papa au début", labelOf(WHERE, p.papaWhere), labelOf(WHERE, r.papaWhere), ok(sc.papaWhere), sc.papaWhere, SCORE.papaWhere],
-      ["👩", "Maman au début", labelOf(WHERE, p.mamanWhere), labelOf(WHERE, r.mamanWhere), ok(sc.mamanWhere), sc.mamanWhere, SCORE.mamanWhere],
+      ["📅", "Date", fmtDay(p.date, { weekday: undefined }), fmtDay(r.date, { weekday: undefined }), ecart(DIFF.days(p, r), (v) => v + " j")],
+      ["🕰️", "Heure", fmtTime(p.time), fmtTime(r.time), ecart(DIFF.minutes(p, r), fmtDuration)],
+      ["⚖️", "Poids", fmtWeight(p.weight), fmtWeight(r.weight), ecart(DIFF.grams(p, r), (v) => v + " g")],
+      ["📏", "Taille", fmtHeight(p.height), fmtHeight(r.height), ecart(DIFF.cm(p, r), (v) => String(v).replace(".", ",") + " cm")],
+      ["💇", "Cheveux", labelOf(HAIR, p.hair), labelOf(HAIR, r.hair), ok(same(p, r, "hair"))],
+      ["🪞", "Ressemblance", labelOf(LOOKS, p.looks), labelOf(LOOKS, r.looks), ok(same(p, r, "looks"))],
+      ["👨", "Papa au début", labelOf(WHERE, p.papaWhere), labelOf(WHERE, r.papaWhere), ok(same(p, r, "papaWhere"))],
+      ["👩", "Maman au début", labelOf(WHERE, p.mamanWhere), labelOf(WHERE, r.mamanWhere), ok(same(p, r, "mamanWhere"))],
     ];
-    if (cfg.guessName) rows.push(["✨", "Prénom", p.babyName || "–", r.babyName || "–", ok(sc.name), sc.name, SCORE.name]);
+    if (cfg.guessName) rows.push(["✨", "Prénom", p.babyName || "–", r.babyName || "–", ok(nameMatch(p, r))]);
     return `<div class="breakdown"><table>
-      <thead><tr><th></th><th>Pronostic</th><th>Réalité</th><th>Écart</th><th>Points</th></tr></thead>
-      <tbody>${rows.map((x) => `<tr><th scope="row"><span aria-hidden="true">${x[0]}</span> ${x[1]}</th><td>${esc(x[2])}</td><td>${esc(x[3])}</td><td>${esc(x[4])}</td><td class="breakdown__pts"><b>${x[5]}</b>/${x[6]}</td></tr>`).join("")}</tbody>
-      <tfoot><tr><th scope="row">Total</th><td colspan="3"></td><td class="breakdown__pts"><b>${sc.total}</b>/${MAX_SCORE}</td></tr></tfoot>
+      <thead><tr><th></th><th>Pronostic</th><th>Réalité</th><th>Écart</th></tr></thead>
+      <tbody>${rows.map((x) => `<tr><th scope="row"><span aria-hidden="true">${x[0]}</span> ${x[1]}</th><td>${esc(x[2])}</td><td>${esc(x[3])}</td><td>${esc(x[4])}</td></tr>`).join("")}</tbody>
     </table></div>`;
   }
 
@@ -792,7 +775,7 @@
     const dueLine = due ? `🎯 Le terme est prévu le <b>${esc(due)}</b>. Sera-t-elle pile à l'heure, en avance ou en retard&nbsp;? ` : "";
     $("#formIntro").innerHTML = hasVoted()
       ? dueLine + "Tu as déjà jeté ta bouteille 💙 Tu peux en lancer une autre pour quelqu'un qui partage ton téléphone."
-      : dueLine + "Remplis ton parchemin, glisse-le dans la bouteille, et que le meilleur gagne&nbsp;! 100 points à gagner selon la précision de chaque réponse. Les courants de l'équipage (les tendances anonymes) se dévoilent une fois que tu as joué.";
+      : dueLine + "Remplis ton parchemin, glisse-le dans la bouteille, et à la naissance on découvrira qui avait vu juste. Pas de points, pas de pression : juste pour le plaisir&nbsp;! Les courants de l'équipage (les tendances anonymes) se dévoilent une fois que tu as joué.";
     $("#heroSub").textContent = state.born
       ? "Elle est arrivée ! Découvre qui a eu le meilleur flair 🏆"
       : "Une petite fille va bientôt rejoindre l'équipage." + (due ? " Le terme est prévu le " + due + " : devine quand elle pointera le bout de sa nageoire !" : " Devine quand elle pointera le bout de sa nageoire !");
@@ -813,7 +796,6 @@
     { key: "babyName", label: "Prénom", get: (p) => p.babyName || "", show: (p) => esc(p.babyName || "–") },
     { key: "message", label: "Mot doux", get: (p) => (msgFor(p.id) ? 1 : 0), show: (p) => (msgFor(p.id) ? `<span title="${esc(msgFor(p.id).text)}">💌</span>` : "–") },
     { key: "createdAt", label: "Reçu le", get: (p) => p.createdAt, show: (p) => esc(new Date(p.createdAt).toLocaleDateString("fr-FR", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })) },
-    { key: "score", label: "Score", get: (p) => (p.score ? p.score.total : -1), show: (p) => (p.score ? `<b>${p.score.total}</b>` : "–"), bornOnly: true },
   ];
   const msgFor = (id) => messages.find((m) => m.id === id);
 
@@ -837,7 +819,7 @@
 
   function dashRows() {
     const q = norm($("#dashSearch").value);
-    let list = state.born && state.result ? rankWith(allPreds, state.result) : allPreds.slice();
+    let list = allPreds.slice();
     if (q) list = list.filter((p) => norm(p.name).includes(q));
     const col = DASH_COLS.find((c) => c.key === dashSort.key) || DASH_COLS[0];
     return list.sort((a, b) => {
@@ -969,13 +951,14 @@
 
     store.onAuth((a) => {
       const changed = a.uid !== auth.uid || a.isAdmin !== auth.isAdmin;
+      const uidChanged = a.uid !== auth.uid;
       auth = a;
       $("#adminLogin").hidden = a.isAdmin;
       $("#adminPanel").hidden = !a.isAdmin;
       $("#adminWho").textContent = "Connecté·e : " + (a.email || "");
       $("#loginError").textContent = a.email && !a.isAdmin ? "Ce compte n'est pas le capitaine de ce navire 🏴‍☠️" : "";
       if (changed) {
-        myPreds = [];
+        if (uidChanged) myPreds = [];
         messages = [];
         syncSubs();
       }
@@ -1056,7 +1039,7 @@
       e.preventDefault();
       const result = readResult();
       if (!result) return;
-      if (!confirm("Annoncer la naissance à tout l'équipage ? Tout le monde verra le récapitulatif et le classement.")) return;
+      if (!confirm("Annoncer la naissance à tout l'équipage ? Tout le monde verra le récapitulatif.")) return;
       try {
         await store.setState({ born: true, open: false, result });
         modal.close();

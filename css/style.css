@@ -321,7 +321,7 @@ input[type="range"] { flex: 1; accent-color: var(--coral); height: 28px; }
 .podium li.p2 { order: 1; padding-top: 24px; }
 .podium li.p3 { order: 3; }
 .my-result {
-  max-width: 640px; margin: 0 auto 22px; text-align: center;
+  max-width: 640px; margin: 26px auto 0; text-align: center;
   background: linear-gradient(135deg, var(--pink), var(--coral)); color: #fff;
   border-radius: 18px; padding: 14px 18px; box-shadow: var(--shadow); font-size: 1.05rem;
 }
@@ -343,7 +343,7 @@ input[type="range"] { flex: 1; accent-color: var(--coral); height: 28px; }
 .lb-row[open] { background: rgba(255,255,255,.18); }
 .lb-row.is-mine { outline: 3px solid var(--coral); }
 .lb-row summary {
-  display: grid; grid-template-columns: 44px 34px minmax(0, 1fr) minmax(60px, 160px) 64px; gap: 10px; align-items: center;
+  display: grid; grid-template-columns: 34px minmax(0, 1fr) auto; gap: 10px; align-items: center;
   padding: 12px 14px; cursor: pointer; list-style: none;
 }
 .lb-row summary::-webkit-details-marker { display: none; }
@@ -354,7 +354,7 @@ input[type="range"] { flex: 1; accent-color: var(--coral); height: 28px; }
 .lb-row__name { font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .lb-row__bar { height: 10px; background: rgba(255,255,255,.15); border-radius: 999px; overflow: hidden; }
 .lb-row__bar > span { display: block; height: 100%; background: linear-gradient(90deg, var(--sea-0), var(--coral)); border-radius: 999px; }
-.lb-row__pts { font-family: var(--font-title); font-weight: 600; text-align: right; }
+.lb-row__guess { font-size: .9rem; opacity: .85; text-align: right; }
 .breakdown { padding: 0 14px 14px; overflow-x: auto; }
 .breakdown table { width: 100%; border-collapse: collapse; font-size: .9rem; background: rgba(255,255,255,.95); color: var(--ink); border-radius: 12px; overflow: hidden; }
 .breakdown th, .breakdown td { padding: 8px 10px; text-align: left; border-bottom: 1px solid rgba(13,106,146,.1); }
@@ -479,8 +479,8 @@ input[type="range"] { flex: 1; accent-color: var(--coral); height: 28px; }
   .countdown__item { min-width: 68px; }
   .countdown__item span { font-size: 1.6rem; }
   .bar { grid-template-columns: 96px 1fr 26px; font-size: .85rem; }
-  .lb-row summary { grid-template-columns: 36px 28px minmax(0, 1fr) 58px; gap: 8px; }
-  .lb-row__bar { display: none; }
+  .lb-row summary { grid-template-columns: 28px minmax(0, 1fr); gap: 8px; }
+  .lb-row__guess { grid-column: 2; }
   .breakdown table { font-size: .8rem; }
   .breakdown th, .breakdown td { padding: 6px; }
   .sun { width: 70px; height: 70px; right: 6%; }
