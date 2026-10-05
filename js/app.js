@@ -619,7 +619,7 @@
     return `
       <div class="stat"><p class="stat__label">Bouteilles à la mer</p><p class="stat__value">${n}</p><p class="stat__sub">pronostic${n > 1 ? "s" : ""} reçu${n > 1 ? "s" : ""}</p></div>
       <div class="stat"><p class="stat__label">Date moyenne</p><p class="stat__value">${isNaN(avgDay) ? "–" : esc(fmtDay(avgDay, { weekday: undefined }))}</p><p class="stat__sub">${isNaN(avgDay) ? "" : esc(fmtDay(avgDay, { day: undefined, month: undefined }))}</p></div>
-      <div class="stat"><p class="stat__label">Heure moyenne</p><p class="stat__value">${mins.length ? fmtTime(avgTime) : "–"}</p><p class="stat__sub">${avgMin >= 1320 || avgMin < 360 ? "une naissance nocturne 🌙" : "en pleine journée ☀️"}</p></div>
+      <div class="stat"><p class="stat__label">Heure moyenne</p><p class="stat__value">${mins.length ? fmtTime(avgTime) : "–"}</p><p class="stat__sub">${momentOf(avgMin)}</p></div>
       <div class="stat"><p class="stat__label">Poids moyen</p><p class="stat__value">${fmtWeight(avg("weight"))}</p><p class="stat__sub">taille moyenne : ${fmtHeight(Math.round(avg("height") * 10) / 10)}</p></div>
       <div class="stat stat--wide"><p class="stat__label">Dates pronostiquées</p>${histogram(list, withNames)}</div>
       ${extremes()}
@@ -629,6 +629,13 @@
       <div class="stat"><p class="stat__label">👨 Papa au début du travail</p>${bars(countBy("papaWhere", WHERE).filter((r) => r.n || withNames))}</div>
       <div class="stat"><p class="stat__label">👩 Maman au début du travail</p>${bars(countBy("mamanWhere", WHERE).filter((r) => r.n || withNames))}</div>
     `;
+  }
+
+  function momentOf(min) {
+    if (min < 360 || min >= 1320) return "une naissance nocturne 🌙";
+    if (min < 720) return "dans la matinée 🌅";
+    if (min < 1080) return "dans l'après-midi ☀️";
+    return "en soirée 🌆";
   }
 
   function histogram(list, withNames) {
@@ -654,7 +661,7 @@
       `<div class="histo__col${c.due ? " histo__col--due" : ""}" title="${esc(fmtDay(c.start, { weekday: undefined }))}${bin > 1 ? " (+" + (bin - 1) + " j)" : ""} : ${c.n}${c.due ? " · terme prévu" : ""}${c.names.length ? " — " + esc(c.names.join(", ")) : ""}">
         ${c.n ? `<div class="histo__n">${c.n}</div>` : ""}
         <div class="histo__bar" style="height:${(c.n / top) * 85}%"></div>
-        ${i % labelEvery === 0 || c.due ? `<span class="histo__x">${c.due ? "🎯 " : ""}${esc(new Date(c.start).toLocaleDateString("fr-FR", { timeZone: "UTC", day: "numeric", month: "short" }))}</span>` : ""}
+        ${i % labelEvery === 0 || c.due ? `<span class="histo__x">${c.due ? "🎯 " : ""}${esc(new Date(c.due ? due : c.start).toLocaleDateString("fr-FR", { timeZone: "UTC", day: "numeric", month: "short" }))}</span>` : ""}
       </div>`
     ).join("") + "</div>";
   }
