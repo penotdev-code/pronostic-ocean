@@ -281,34 +281,6 @@ input[type="range"] { flex: 1; accent-color: var(--coral); height: 28px; }
 .histo__n { text-align: center; font-size: .72rem; font-weight: 800; margin-bottom: 2px; }
 .empty { text-align: center; opacity: .8; font-style: italic; padding: 24px; }
 
-/* ---------- Cartes de pronostics ---------- */
-.cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 18px; }
-.card {
-  position: relative;
-  background: linear-gradient(160deg, rgba(255,255,255,.95), rgba(233,251,255,.92));
-  color: var(--ink); border-radius: var(--radius); padding: 20px; box-shadow: var(--shadow);
-  animation: rise .6s ease both;
-}
-.card--mine { outline: 3px solid var(--coral); }
-.card__head { display: flex; align-items: center; gap: 12px; margin-bottom: 12px; }
-.card__avatar {
-  width: 52px; height: 52px; border-radius: 50%; display: grid; place-items: center; font-size: 1.9rem;
-  background: linear-gradient(135deg, var(--sky-1), var(--pink)); flex-shrink: 0;
-  animation: bob 3s ease-in-out infinite;
-}
-.card__name { font-family: var(--font-title); font-weight: 600; font-size: 1.2rem; margin: 0; word-break: break-word; }
-.card__tag { font-size: .75rem; font-weight: 800; color: var(--coral-dark); }
-.card__score {
-  position: absolute; top: -10px; right: -6px;
-  background: var(--coral); color: #fff; font-family: var(--font-title); font-weight: 700;
-  padding: 4px 12px; border-radius: 999px; box-shadow: 0 6px 14px rgba(232,90,108,.4);
-}
-.card dl { display: grid; grid-template-columns: auto 1fr; gap: 4px 10px; margin: 0; font-size: .95rem; }
-.card dt { opacity: .7; }
-.card dd { margin: 0; font-weight: 700; }
-@keyframes rise { from { opacity: 0; transform: translateY(20px); } }
-@keyframes bob { 50% { transform: translateY(-4px) rotate(4deg); } }
-
 /* ---------- Coquillages (messages) ---------- */
 .shells { display: flex; flex-wrap: wrap; gap: 16px; justify-content: center; }
 .shell {
@@ -348,7 +320,6 @@ input[type="range"] { flex: 1; accent-color: var(--coral); height: 28px; }
 .podium li.p1 { order: 2; padding-top: 40px; background: linear-gradient(180deg, rgba(255,216,107,.55), rgba(255,255,255,.15)); }
 .podium li.p2 { order: 1; padding-top: 24px; }
 .podium li.p3 { order: 3; }
-.replay { text-align: center; margin: 22px 0 0; }
 .my-result {
   max-width: 640px; margin: 0 auto 22px; text-align: center;
   background: linear-gradient(135deg, var(--pink), var(--coral)); color: #fff;
@@ -391,74 +362,6 @@ input[type="range"] { flex: 1; accent-color: var(--coral); height: 28px; }
 .breakdown tbody th { white-space: nowrap; }
 .breakdown tfoot { background: var(--sand); font-size: 1rem; }
 .breakdown__pts { text-align: right !important; white-space: nowrap; }
-
-/* ---------- Le grand reveal ---------- */
-.is-revealing { overflow: hidden; }
-.reveal {
-  position: fixed; inset: 0; z-index: 400; display: none;
-  flex-direction: column; align-items: center; justify-content: center;
-  padding: 60px 16px 24px; color: #fff; text-align: center;
-}
-.reveal.is-open { display: flex; }
-.reveal__bg {
-  position: absolute; inset: 0; z-index: -1;
-  background:
-    radial-gradient(ellipse at 50% 0%, rgba(127,224,230,.35), transparent 60%),
-    linear-gradient(180deg, var(--sea-3), var(--sea-6));
-  animation: fadein .5s ease;
-}
-.reveal__bg::after {
-  content: ""; position: absolute; inset: 0;
-  background: repeating-linear-gradient(100deg, rgba(255,255,255,.05) 0 50px, transparent 50px 150px);
-  animation: rays 10s ease-in-out infinite alternate;
-}
-@keyframes fadein { from { opacity: 0; } }
-.reveal__close {
-  position: absolute; top: 14px; right: 14px; width: 44px; height: 44px; border-radius: 50%;
-  border: 0; background: rgba(255,255,255,.15); color: #fff; font-size: 1.2rem; cursor: pointer;
-}
-.reveal__progress { position: absolute; top: 0; left: 0; right: 0; height: 5px; background: rgba(255,255,255,.12); }
-.reveal__progress-fill { height: 100%; width: 0; background: linear-gradient(90deg, var(--sea-0), var(--coral)); transition: width .5s ease; }
-.reveal__stage { width: min(720px, 100%); flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; overflow-y: auto; min-height: 0; }
-.reveal__stage.is-in > * { animation: rise .55s ease both; }
-.reveal__stage.is-in > *:nth-child(2) { animation-delay: .1s; }
-.reveal__stage.is-in > *:nth-child(3) { animation-delay: .2s; }
-.reveal__kicker { text-transform: uppercase; letter-spacing: .14em; font-weight: 800; font-size: .8rem; opacity: .8; margin: 0; }
-.reveal__title { font-family: var(--font-title); font-size: clamp(1.7rem, 5vw, 2.8rem); margin: 8px 0 12px; }
-.reveal__text { font-size: 1.1rem; max-width: 520px; opacity: .92; margin: 0; }
-.reveal__icon { font-size: 4rem; }
-.reveal__bottle { font-size: 5.5rem; animation: float 3s ease-in-out infinite; }
-@keyframes float { 0%,100% { transform: translateY(0) rotate(-12deg); } 50% { transform: translateY(-14px) rotate(12deg); } }
-.reveal__drum { font-size: 4rem; animation: drum .18s linear infinite; }
-@keyframes drum { 0% { transform: rotate(-8deg) scale(1); } 50% { transform: rotate(8deg) scale(1.08); } 100% { transform: rotate(-8deg) scale(1); } }
-.reveal__value {
-  font-family: var(--font-title); font-weight: 700; font-size: clamp(2.2rem, 8vw, 4.2rem); margin: 6px 0 14px; line-height: 1.1;
-  background: linear-gradient(90deg, #fff, var(--pink), #fff); background-size: 200% auto;
-  -webkit-background-clip: text; background-clip: text; color: transparent;
-  animation: popin .6s cubic-bezier(.2,1.6,.4,1) both, shimmer 4s linear infinite;
-}
-.reveal__value--name { color: var(--pink); background: none; -webkit-background-clip: initial; background-clip: initial; animation: none; min-height: 1.2em; }
-.reveal__letter { display: inline-block; animation: popin .5s cubic-bezier(.2,1.6,.4,1) both; text-shadow: 0 0 24px rgba(255,195,207,.7); }
-@keyframes popin { from { transform: scale(.2); opacity: 0; } }
-.reveal__sub { font-size: 1.1rem; max-width: 560px; margin: 0; background: rgba(255,255,255,.12); padding: 12px 18px; border-radius: 16px; animation: rise .5s ease both; }
-.reveal__nav { display: flex; gap: 12px; justify-content: center; margin-top: 18px; flex-wrap: wrap; }
-.reveal__rank { list-style: none; padding: 0; margin: 0; width: min(520px, 100%); max-height: 55vh; overflow-y: auto; }
-.reveal__row {
-  display: grid; grid-template-columns: 48px 1fr auto; gap: 10px; align-items: center; text-align: left;
-  padding: 10px 14px; margin-bottom: 6px; border-radius: 14px; background: rgba(255,255,255,.1);
-  animation: slidein .45s cubic-bezier(.2,1.3,.4,1) both;
-}
-.reveal__row.is-mine { outline: 3px solid var(--coral); }
-.reveal__row--top { font-size: 1.15rem; }
-.reveal__row--top.r1 { background: linear-gradient(90deg, rgba(255,216,107,.55), rgba(255,255,255,.12)); font-size: 1.35rem; }
-.reveal__row--top.r2 { background: linear-gradient(90deg, rgba(220,230,240,.45), rgba(255,255,255,.1)); }
-.reveal__row--top.r3 { background: linear-gradient(90deg, rgba(230,160,110,.45), rgba(255,255,255,.1)); }
-.reveal__row--drum { display: block; text-align: center; font-size: 1.5rem; animation: drum .2s linear infinite; background: none; }
-.reveal__pos { font-weight: 800; text-align: center; }
-.reveal__who { font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.reveal__pts { font-family: var(--font-title); font-weight: 600; }
-@keyframes slidein { from { transform: translateY(-16px) scale(.95); opacity: 0; } }
-.trophies--reveal { width: 100%; max-height: 60vh; overflow-y: auto; text-align: center; }
 
 /* ---------- Fond marin ---------- */
 .seabed {
@@ -640,7 +543,6 @@ input[type="range"] { flex: 1; accent-color: var(--coral); height: 28px; }
 .lock p { margin: 0; }
 .lock__icon { font-size: 2.6rem; animation: bob 3s ease-in-out infinite; }
 .lock__count { opacity: .85; }
-.card--anon .card__name { font-style: italic; opacity: .75; }
 
 /* Statistiques version capitaine */
 .bar__who { grid-column: 1 / -1; font-size: .78rem; opacity: .8; margin-top: -4px; }
@@ -684,3 +586,5 @@ input[type="range"] { flex: 1; accent-color: var(--coral); height: 28px; }
   .calendar { padding: 10px; }
   .calendar__day { min-height: 34px; border-radius: 10px; }
 }
+@keyframes rise { from { opacity: 0; transform: translateY(20px); } }
+@keyframes bob { 50% { transform: translateY(-4px) rotate(4deg); } }

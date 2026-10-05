@@ -7,7 +7,6 @@ Un site de pronostics de naissance sur le thème de l'océan, à partager avec l
 - **La surface** : un compte à rebours jusqu'au terme, avec vagues, soleil et nuages animés.
 - **🍾 Ta bouteille à la mer** : le formulaire de pronostic avec un avatar marin à choisir. On y donne la date (avec un calendrier où le terme est marqué 🎯), l'heure, le poids, la taille, les cheveux, la ressemblance, où seront papa et maman au début du travail, le prénom en bonus et un petit mot pour bébé.
 - **🌊 Les courants de l'équipage** : les statistiques anonymes en direct (date moyenne, heure moyenne, poids moyen, histogramme des dates, prénoms les plus proposés…).
-- **🐠 Le banc des pronostics** : les bouteilles repêchées, en « moussaillons mystère » jusqu'à la naissance.
 - **💌 Ton mot doux** : chacun peut relire le sien ; seuls les parents lisent tous les mots doux.
 - **🧭 Le tableau de bord du capitaine** (visible seulement par les parents) : tous les pronostics avec les noms, triables et exportables en CSV, les statistiques détaillées (qui a répondu quoi, les extrêmes) et tous les mots doux.
 
@@ -15,12 +14,12 @@ Un site de pronostics de naissance sur le thème de l'océan, à partager avec l
 
 | | Avant d'avoir joué | Après avoir joué | Après la naissance | Capitaine |
 |---|---|---|---|---|
-| Pronostics des autres | 🔒 caché | anonymes | avec les noms et les scores | tout |
+| Réponses de chaque joueur | 🔒 | 🔒 | dans le classement final | tout |
 | Statistiques | 🔒 caché | anonymes | anonymes | détaillées avec les noms |
 | Mots doux des autres | 🔒 | 🔒 | 🔒 | tous |
 
 Ces règles sont appliquées par la base de données elle-même (`firestore.rules`), pas seulement masquées à l'écran : un joueur malin ne peut pas les contourner.
-- **🏆 Le trésor** : une fois la naissance annoncée, la fiche de naissance, le podium et le classement.
+- **🏆 Le récap final** : une fois la naissance annoncée, la fiche de naissance, le résultat personnel de chacun, le podium, les trophées et le classement complet, où chaque participant peut ouvrir le détail de ses points critère par critère.
 - Une jauge de profondeur qui descend jusqu'à la fosse des Mariannes quand on fait défiler la page, des bulles, des poissons qui passent (clique dessus !) et quelques surprises cachées 🧰 (indice : le coffre au fond de la mer, et le mot `sirene` tapé au clavier).
 
 ### Le barème (100 points)
@@ -85,17 +84,7 @@ Le site sera sur `https://<ton-projet>.web.app`.
 Tout en bas de la page, clique sur l'ancre **⚓** (ou ajoute `#capitaine` à l'adresse), connecte-toi, puis :
 - **Pronostics ouverts** : décoche pour fermer les paris (par exemple au début du travail 😉).
 - **Date de fin des votes** : fixe un jour et une heure ; le formulaire se ferme tout seul à ce moment-là, et un compte à rebours s'affiche pour les joueurs.
-- **Elle est née !** : saisis les vraies infos.
-  - **👀 Répéter le reveal (privé)** : tu vois le reveal tel que tout le monde le verra, sans rien publier.
-  - **🎉 Annoncer la naissance** : publie les résultats pour tout le monde.
-
-### 🎬 Le grand reveal
-
-À l'annonce, chaque visiteur voit (une seule fois, automatiquement) une révélation plein écran, étape par étape :
-une bouteille échoue sur la plage → la date, l'heure, le poids, la taille, les cheveux et la ressemblance sont dévoilés un par un avec roulement de tambour (et le nom du plus proche à chaque fois) → le prénom apparaît lettre par lettre → le classement remonte du dernier jusqu'au premier, avec suspense pour le podium → les trophées.
-Un clic (ou la barre espace) accélère l'animation ; le bouton « Revoir le grand reveal » permet de le relancer.
-
-Sous le reveal, la page affiche ensuite : ton résultat personnel, le podium, les trophées (calendrier vivant, chronomètre, balance, devin du prénom, le plus pressé, le plus patient, prix du poisson-lune…) et **le classement complet, où chaque participant peut ouvrir le détail de ses points critère par critère**.
+- **Elle est née !** : saisis les vraies infos puis **🎉 Annoncer la naissance** : le récap final et le classement apparaissent pour tout le monde.
 - Tu peux aussi supprimer un pronostic (doublon, blague…).
 
 ## 🧪 Tester en local

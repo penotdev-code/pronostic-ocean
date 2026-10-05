@@ -41,7 +41,6 @@
   let myPreds = []; // mes propres pronostics
   let messages = []; // capitaine : tous ; joueur : les siens
   let voters = []; // appareils ayant joué
-  const loaded = { state: false, preds: false };
 
   /* ---------------- Utilitaires ---------------- */
   function esc(s) {
@@ -681,59 +680,6 @@
     $("#stats").innerHTML = statsHtml(state.born ? allPreds : answers, false);
   }
 
-  function cardHtml(p, i, opts) {
-    const mysterious = opts.anonymous;
-    return `<article class="card${opts.mine ? " card--mine" : ""}${mysterious ? " card--anon" : ""}" style="animation-delay:${Math.min(i, 12) * 40}ms">
-      ${p.score ? `<span class="card__score">${p.score.total} pts</span>` : ""}
-      <div class="card__head">
-        <div class="card__avatar" style="animation-delay:${-i * 0.37}s">${esc(p.avatar)}</div>
-        <div><p class="card__name">${mysterious ? "Moussaillon mystère" : esc(p.name)}</p>${opts.mine ? '<span class="card__tag">★ Ma bouteille</span>' : ""}</div>
-      </div>
-      <dl>
-        <dt>📅</dt><dd>${esc(fmtDay(p.date))}</dd>
-        <dt>🕰️</dt><dd>${esc(fmtTime(p.time))}</dd>
-        <dt>⚖️</dt><dd>${esc(fmtWeight(p.weight))}</dd>
-        <dt>📏</dt><dd>${esc(fmtHeight(p.height))}</dd>
-        <dt>💇</dt><dd>${esc(labelOf(HAIR, p.hair))}</dd>
-        <dt>🪞</dt><dd>${esc(labelOf(LOOKS, p.looks))}</dd>
-        <dt title="Papa au début du travail">👨</dt><dd>${esc(labelOf(WHERE, p.papaWhere))}</dd>
-        <dt title="Maman au début du travail">👩</dt><dd>${esc(labelOf(WHERE, p.mamanWhere))}</dd>
-        ${cfg.guessName && p.babyName ? `<dt>✨</dt><dd>${esc(p.babyName)}</dd>` : ""}
-      </dl>
-    </article>`;
-  }
-
-  function renderCards() {
-    const box = $("#cards");
-    const lock = $("#bancLock");
-    const mine = mineIds();
-    if (state.born && state.result) {
-      lock.hidden = true;
-      box.hidden = false;
-      const list = rankWith(allPreds, state.result);
-      $("#bancIntro").textContent = "Classement final : les points sont sur chaque bouteille 🏆";
-      box.innerHTML = list.length ? list.map((p, i) => cardHtml(p, i, { mine: mine.includes(p.id) })).join("") : '<p class="empty">Aucune bouteille repêchée. 🌊</p>';
-      return;
-    }
-    if (!canSeeAnswers()) {
-      lock.hidden = false;
-      box.hidden = true;
-      $("#bancIntro").textContent = "Toutes les bouteilles repêchées jusqu'ici.";
-      lock.innerHTML = lockHtml("pronostics des autres");
-      return;
-    }
-    lock.hidden = true;
-    box.hidden = false;
-    const others = answers.filter((a) => !mine.includes(a.id)).sort((a, b) => b.createdAt - a.createdAt);
-    const own = myPreds.slice().sort((a, b) => b.createdAt - a.createdAt);
-    $("#bancIntro").textContent = `${plural(own.length + others.length, "bouteille")} repêchée${own.length + others.length > 1 ? "s" : ""}. Les noms resteront secrets jusqu'à la naissance 🤫`;
-    if (!own.length && !others.length) {
-      box.innerHTML = '<p class="empty">L\'océan est encore calme… aucune bouteille repêchée. 🌊</p>';
-      return;
-    }
-    box.innerHTML = own.map((p, i) => cardHtml(p, i, { mine: true })).join("") + others.map((p, i) => cardHtml(p, i + own.length, { anonymous: true })).join("");
-  }
-
   function renderMyMessages() {
     const mineMsgs = messages.filter((m) => m.uid === auth.uid);
     $("#messages").hidden = !mineMsgs.length;
@@ -839,7 +785,7 @@
     const dueLine = due ? `🎯 Le terme est prévu le <b>${esc(due)}</b>. Sera-t-elle pile à l'heure, en avance ou en retard&nbsp;? ` : "";
     $("#formIntro").innerHTML = hasVoted()
       ? dueLine + "Tu as déjà jeté ta bouteille 💙 Tu peux en lancer une autre pour quelqu'un qui partage ton téléphone."
-      : dueLine + "Remplis ton parchemin, glisse-le dans la bouteille, et que le meilleur gagne&nbsp;! 100 points à gagner selon la précision de chaque réponse. Les pronostics des autres se dévoilent une fois que tu as joué.";
+      : dueLine + "Remplis ton parchemin, glisse-le dans la bouteille, et que le meilleur gagne&nbsp;! 100 points à gagner selon la précision de chaque réponse. Les courants de l'équipage (les tendances anonymes) se dévoilent une fois que tu as joué.";
     $("#heroSub").textContent = state.born
       ? "Elle est arrivée ! Découvre qui a eu le meilleur flair 🏆"
       : "Une petite fille va bientôt rejoindre l'équipage." + (due ? " Le terme est prévu le " + due + " : devine quand elle pointera le bout de sa nageoire !" : " Devine quand elle pointera le bout de sa nageoire !");
@@ -944,47 +890,10 @@
     }, 1000);
   }
 
-  /* ---------------- Le grand reveal ---------------- */
-  function revealKey(r) {
-    return "ocean.revealSeen." + r.date + "T" + r.time;
-  }
-  function startReveal(r, opts = {}) {
-    if (!window.OceanReveal || !r) return;
-    if (!opts.preview) {
-      try {
-        localStorage.setItem(revealKey(r), "1");
-      } catch (e) {}
-    }
-    OceanReveal.start({
-      result: r,
-      predictions: allPreds.slice(),
-      ranked: rankWith(allPreds, r),
-      mine: mineIds(),
-      nickname: cfg.babyNickname || "notre petite sirène",
-      guessName: !!cfg.guessName,
-      HAIR, LOOKS, WHERE, esc, norm, labelOf, medal, confetti,
-      fmtDay, fmtTime, fmtWeight, fmtHeight, fmtDuration,
-      diff: DIFF,
-      trophiesHtml: () => trophiesHtml(allPreds, r),
-      onClose: () => {
-        if (!opts.preview && state.born) $("#tresor").scrollIntoView({ behavior: "smooth" });
-      },
-    });
-  }
-  function maybeAutoReveal() {
-    if (!loaded.preds || !loaded.state || !state.born || !state.result) return;
-    let seen = false;
-    try {
-      seen = localStorage.getItem(revealKey(state.result)) === "1";
-    } catch (e) {}
-    if (!seen && !document.body.classList.contains("is-revealing")) startReveal(state.result);
-  }
-
   function renderAll() {
     renderFormState();
     renderTreasure();
     renderStats();
-    renderCards();
     renderMyMessages();
     renderDashboard();
     renderAdminList();
@@ -1004,14 +913,14 @@
     }
     if (canSeeAnswers()) want.answers = () => store.watchAnswers((l) => ((answers = l), renderAll()), subError("answers"));
     if (auth.isAdmin || state.born)
-      want.preds = () => store.watchPredictions((l) => ((allPreds = l), (loaded.preds = true), renderAll(), maybeAutoReveal()), subError("preds"));
+      want.preds = () => store.watchPredictions((l) => ((allPreds = l), renderAll()), subError("preds"));
 
     Object.keys(subs).forEach((k) => {
       if (!want[k]) {
         subs[k]();
         delete subs[k];
         if (k === "answers") answers = [];
-        if (k === "preds") (allPreds = []), (loaded.preds = false);
+        if (k === "preds") allPreds = [];
       }
     });
     Object.keys(want).forEach((k) => {
@@ -1136,23 +1045,16 @@
       return result;
     }
 
-    // Aperçu privé : le capitaine répète le reveal sans rien publier
-    $("#previewRevealBtn").addEventListener("click", () => {
-      const result = readResult();
-      if (!result) return;
-      modal.close();
-      startReveal(result, { preview: true });
-    });
-
     $("#resultForm").addEventListener("submit", async (e) => {
       e.preventDefault();
       const result = readResult();
       if (!result) return;
-      if (!confirm("Annoncer la naissance à tout l'équipage ? Tout le monde verra le reveal et le classement.")) return;
+      if (!confirm("Annoncer la naissance à tout l'équipage ? Tout le monde verra le récapitulatif et le classement.")) return;
       try {
         await store.setState({ born: true, open: false, result });
         modal.close();
-        // Le reveal se lance tout seul via onState (pour le capitaine comme pour les autres)
+        confetti();
+        setTimeout(() => $("#tresor").scrollIntoView({ behavior: "smooth" }), 300);
       } catch (ex) {
         $("#resultError").textContent = "Erreur : " + ex.message;
       }
@@ -1255,11 +1157,7 @@
   }, onError);
   store.onState((s) => {
     state = s;
-    loaded.state = true;
     syncSubs();
     renderAll();
-    maybeAutoReveal();
   }, onError);
-
-  $("#replayRevealBtn").addEventListener("click", () => startReveal(state.result, { preview: true }));
 })();

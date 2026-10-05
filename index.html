@@ -51,7 +51,7 @@
 
       <div class="hero__actions">
         <a class="btn btn--coral" href="#pronostic" id="ctaPredict">🍾 Jeter ma bouteille à la mer</a>
-        <a class="btn btn--ghost" href="#banc">Voir les pronostics</a>
+        <a class="btn btn--ghost" href="#courants">Voir les courants</a>
       </div>
     </div>
 
@@ -97,7 +97,6 @@
       <div class="container">
         <h2 class="zone__title">🎉 Elle est arrivée&nbsp;!</h2>
         <div class="birth-card" id="birthCard"></div>
-        <p class="replay"><button class="btn btn--ghost" type="button" id="replayRevealBtn">🎬 Revoir le grand reveal</button></p>
 
         <h3 class="zone__subtitle">🏆 Le trésor des meilleurs pronostiqueurs</h3>
         <div class="my-result" id="myResult" hidden></div>
@@ -209,18 +208,8 @@
       </div>
     </section>
 
-    <!-- ============ LISTE ============ -->
-    <section class="zone zone--3" id="banc">
-      <div class="container">
-        <h2 class="zone__title">🐠 Le banc des pronostics</h2>
-        <p class="zone__intro" id="bancIntro">Toutes les bouteilles repêchées jusqu'ici.</p>
-        <div class="lock" id="bancLock" hidden></div>
-        <div class="cards" id="cards"></div>
-      </div>
-    </section>
-
     <!-- ============ MESSAGES ============ -->
-    <section class="zone zone--4" id="messages">
+    <section class="zone zone--3" id="messages">
       <div class="container">
         <h2 class="zone__title">💌 Ton mot doux</h2>
         <p class="zone__intro">Il est gardé au coffre : seuls les futurs parents peuvent le lire. Clique sur le coquillage pour le relire.</p>
@@ -285,7 +274,6 @@
         <label class="span-2">Prénom <input type="text" name="babyName" maxlength="30" /></label>
         <label class="span-2">Petit mot des parents <textarea name="note" rows="2" maxlength="400" placeholder="Maman et bébé vont bien…"></textarea></label>
         <div class="span-2 admin-actions">
-          <button class="btn btn--ghost-dark" type="button" id="previewRevealBtn">👀 Répéter le reveal (privé)</button>
           <button class="btn btn--coral" type="submit">🎉 Annoncer la naissance</button>
           <button class="btn btn--ghost-dark" type="button" id="unpublishBtn">Masquer les résultats</button>
         </div>
@@ -303,7 +291,6 @@
 
   <script src="js/config.js"></script>
   <script src="js/store.js"></script>
-  <script src="js/reveal.js"></script>
   <script src="js/app.js"></script>
 </body>
 </html>
