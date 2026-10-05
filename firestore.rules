@@ -1,0 +1,50 @@
+rules_version = '2';
+// 🐚 Règles de sécurité Firestore
+// ⚠️ Remplace l'email ci-dessous si le capitaine n'est pas penot.dev@gmail.com
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function isCaptain() {
+      return request.auth != null
+        && request.auth.token.email == "penot.dev@gmail.com";
+    }
+
+    function str(v, min, max) {
+      return v is string && v.size() >= min && v.size() <= max;
+    }
+
+    function gameIsOpen() {
+      let path = /databases/$(database)/documents/meta/state;
+      return !exists(path)
+        || (get(path).data.get('open', true) == true && get(path).data.get('born', false) == false);
+    }
+
+    // Les pronostics : tout le monde peut lire et ajouter, seul le capitaine supprime
+    match /predictions/{id} {
+      allow read: if true;
+      allow delete, update: if isCaptain();
+      allow create: if request.resource.data.keys().hasOnly(
+                         ['name','avatar','date','time','weight','height','hair','looks','babyName','message','createdAt'])
+                    && str(request.resource.data.name, 1, 40)
+                    && str(request.resource.data.avatar, 1, 16)
+                    && request.resource.data.date.matches('^[0-9]{4}-[0-9]{2}-[0-9]{2}$')
+                    && request.resource.data.time.matches('^[0-9]{2}:[0-9]{2}$')
+                    && request.resource.data.weight is number
+                    && request.resource.data.weight >= 1000 && request.resource.data.weight <= 6000
+                    && request.resource.data.height is number
+                    && request.resource.data.height >= 30 && request.resource.data.height <= 65
+                    && str(request.resource.data.hair, 1, 20)
+                    && str(request.resource.data.looks, 1, 20)
+                    && str(request.resource.data.babyName, 0, 30)
+                    && str(request.resource.data.message, 0, 280)
+                    && request.resource.data.createdAt is number
+                    && gameIsOpen();
+    }
+
+    // L'état du jeu (ouvert/fermé, résultats) : lecture publique, écriture capitaine
+    match /meta/{doc} {
+      allow read: if true;
+      allow write: if isCaptain();
+    }
+  }
+}

@@ -1,0 +1,250 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Pronostics de la petite sirène</title>
+  <meta name="description" content="Une petite fille arrive bientôt ! Jette ta bouteille à la mer : date, heure, poids, taille… fais ton pronostic." />
+  <meta property="og:title" content="🐚 Pronostics de la petite sirène" />
+  <meta property="og:description" content="Une petite fille arrive bientôt ! Viens faire ton pronostic." />
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🐚</text></svg>" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600;700&family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+  <!-- Décor : bulles + créatures -->
+  <div class="bubbles" id="bubbles" aria-hidden="true"></div>
+  <div class="swimmers" id="swimmers" aria-hidden="true"></div>
+
+  <!-- Jauge de profondeur -->
+  <aside class="depth" aria-hidden="true">
+    <div class="depth__track"><div class="depth__fill" id="depthFill"></div></div>
+    <div class="depth__label"><span id="depthValue">0</span> m</div>
+  </aside>
+
+  <div class="demo-banner" id="demoBanner" hidden>
+    🧪 Mode démo : les pronostics restent dans ce navigateur. Configure Firebase dans <code>js/config.js</code> pour les partager.
+  </div>
+
+  <!-- ============ SURFACE ============ -->
+  <header class="surface" id="top">
+    <div class="sun" aria-hidden="true"></div>
+    <div class="cloud cloud--1" aria-hidden="true"></div>
+    <div class="cloud cloud--2" aria-hidden="true"></div>
+    <div class="gull" aria-hidden="true">〰</div>
+
+    <div class="hero">
+      <p class="hero__kicker" id="heroKicker">Avis à tous les moussaillons</p>
+      <h1 class="hero__title">Une petite <span class="shimmer">sirène</span><br />arrive bientôt&nbsp;!</h1>
+      <p class="hero__sub" id="heroSub">Une petite fille va bientôt rejoindre l'équipage. Devine quand elle pointera le bout de sa nageoire !</p>
+
+      <div class="countdown" id="countdown">
+        <div class="countdown__item"><span id="cdDays">–</span><small>jours</small></div>
+        <div class="countdown__item"><span id="cdHours">–</span><small>heures</small></div>
+        <div class="countdown__item"><span id="cdMinutes">–</span><small>minutes</small></div>
+        <div class="countdown__item"><span id="cdSeconds">–</span><small>secondes</small></div>
+      </div>
+      <p class="countdown__caption" id="countdownCaption"></p>
+
+      <div class="hero__actions">
+        <a class="btn btn--coral" href="#pronostic" id="ctaPredict">🍾 Jeter ma bouteille à la mer</a>
+        <a class="btn btn--ghost" href="#banc">Voir les pronostics</a>
+      </div>
+    </div>
+
+    <svg class="waves" viewBox="0 24 150 28" preserveAspectRatio="none" aria-hidden="true">
+      <defs>
+        <path id="wave" d="M-160 44c30 0 58-18 88-18s58 18 88 18 58-18 88-18 58 18 88 18v44h-352z" />
+      </defs>
+      <g class="waves__parallax">
+        <use href="#wave" x="48" y="0" fill="rgba(124,224,230,0.55)" />
+        <use href="#wave" x="48" y="3" fill="rgba(64,196,214,0.55)" />
+        <use href="#wave" x="48" y="5" fill="rgba(30,160,196,0.7)" />
+        <use href="#wave" x="48" y="7" fill="var(--sea-1)" />
+      </g>
+    </svg>
+  </header>
+
+  <main>
+    <!-- ============ RÉSULTATS (après la naissance) ============ -->
+    <section class="zone zone--treasure" id="tresor" hidden>
+      <div class="container">
+        <h2 class="zone__title">🎉 Elle est arrivée&nbsp;!</h2>
+        <div class="birth-card" id="birthCard"></div>
+        <h3 class="zone__subtitle">🏆 Le trésor des meilleurs pronostiqueurs</h3>
+        <ol class="podium" id="podium"></ol>
+        <div class="leaderboard" id="leaderboard"></div>
+      </div>
+    </section>
+
+    <!-- ============ FORMULAIRE ============ -->
+    <section class="zone zone--1" id="pronostic">
+      <div class="container">
+        <h2 class="zone__title">🍾 Ta bouteille à la mer</h2>
+        <p class="zone__intro" id="formIntro">Remplis ton parchemin, glisse-le dans la bouteille, et que le meilleur gagne&nbsp;! Les points sont attribués selon la précision de chaque réponse (100 points au maximum).</p>
+
+        <div class="closed-note" id="closedNote" hidden>
+          ⚓ Les pronostics sont fermés : la marée est passée&nbsp;! Merci à tous les moussaillons.
+        </div>
+
+        <form class="parchment" id="predictionForm" novalidate>
+          <fieldset class="field field--wide">
+            <legend>Ton nom de moussaillon</legend>
+            <input type="text" name="name" maxlength="40" required placeholder="Ex. Tata Julie" autocomplete="name" />
+          </fieldset>
+
+          <fieldset class="field field--wide">
+            <legend>Choisis ton avatar marin</legend>
+            <div class="avatars" id="avatarPicker" role="radiogroup"></div>
+          </fieldset>
+
+          <fieldset class="field">
+            <legend>📅 Date de naissance</legend>
+            <input type="date" name="date" required />
+            <small class="hint" id="dateHint"></small>
+          </fieldset>
+
+          <fieldset class="field">
+            <legend>🕰️ Heure de naissance</legend>
+            <input type="time" name="time" required />
+          </fieldset>
+
+          <fieldset class="field">
+            <legend>⚖️ Poids</legend>
+            <div class="range">
+              <input type="range" name="weight" min="2000" max="5000" step="10" value="3300" />
+              <output id="weightOut">3,30 kg</output>
+            </div>
+          </fieldset>
+
+          <fieldset class="field">
+            <legend>📏 Taille</legend>
+            <div class="range">
+              <input type="range" name="height" min="40" max="58" step="0.5" value="50" />
+              <output id="heightOut">50 cm</output>
+            </div>
+          </fieldset>
+
+          <fieldset class="field field--wide">
+            <legend>💇 Ses cheveux</legend>
+            <div class="chips" id="hairPicker"></div>
+          </fieldset>
+
+          <fieldset class="field field--wide">
+            <legend>🪞 Elle ressemblera plutôt à…</legend>
+            <div class="chips" id="looksPicker"></div>
+          </fieldset>
+
+          <fieldset class="field field--wide" id="nameField">
+            <legend>✨ Son prénom (bonus !)</legend>
+            <input type="text" name="babyName" maxlength="30" placeholder="Ton intuition…" />
+          </fieldset>
+
+          <fieldset class="field field--wide">
+            <legend>💌 Un petit mot pour elle</legend>
+            <textarea name="message" maxlength="280" rows="3" placeholder="Il sera gardé précieusement dans son coffre à trésors…"></textarea>
+            <small class="hint"><span id="msgCount">0</span>/280</small>
+          </fieldset>
+
+          <div class="form__footer field--wide">
+            <button type="submit" class="btn btn--coral btn--big" id="submitBtn">🍾 Lancer ma bouteille</button>
+            <p class="form__error" id="formError" role="alert"></p>
+          </div>
+        </form>
+      </div>
+    </section>
+
+    <!-- ============ STATISTIQUES ============ -->
+    <section class="zone zone--2" id="courants">
+      <div class="container">
+        <h2 class="zone__title">🌊 Les courants de l'équipage</h2>
+        <p class="zone__intro">Ce que pense la majorité… (mais la majorité a-t-elle raison&nbsp;?)</p>
+        <div class="stats" id="stats"></div>
+      </div>
+    </section>
+
+    <!-- ============ LISTE ============ -->
+    <section class="zone zone--3" id="banc">
+      <div class="container">
+        <h2 class="zone__title">🐠 Le banc des pronostics</h2>
+        <p class="zone__intro" id="bancIntro">Toutes les bouteilles repêchées jusqu'ici.</p>
+        <div class="cards" id="cards"></div>
+      </div>
+    </section>
+
+    <!-- ============ MESSAGES ============ -->
+    <section class="zone zone--4" id="messages">
+      <div class="container">
+        <h2 class="zone__title">💌 Les mots doux des abysses</h2>
+        <p class="zone__intro">Clique sur un coquillage pour l'ouvrir.</p>
+        <div class="shells" id="shells"></div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="seabed">
+    <div class="seabed__decor" aria-hidden="true">
+      <span class="weed weed--1"></span><span class="weed weed--2"></span><span class="weed weed--3"></span>
+      <span class="weed weed--4"></span><span class="weed weed--5"></span>
+      <span class="chest" id="chest" title="Coffre au trésor">🧰</span>
+    </div>
+    <p>Fait avec 💙 pour <span id="footerBaby">notre petite sirène</span> · <span id="footerParents"></span></p>
+    <button class="anchor-btn" id="adminOpen" title="Espace capitaine">⚓</button>
+  </footer>
+
+  <!-- ============ ESPACE CAPITAINE ============ -->
+  <dialog class="modal" id="adminModal">
+    <form method="dialog" class="modal__close-form"><button class="modal__close" aria-label="Fermer">✕</button></form>
+    <h2>⚓ Espace capitaine</h2>
+
+    <div id="adminLogin">
+      <p>Réservé aux futurs parents pour annoncer la naissance.</p>
+      <form id="loginForm" class="admin-form">
+        <label>Email <input type="email" name="email" required autocomplete="username" /></label>
+        <label>Mot de passe <input type="password" name="password" required autocomplete="current-password" /></label>
+        <button class="btn btn--coral" type="submit">Monter à bord</button>
+        <p class="form__error" id="loginError"></p>
+      </form>
+    </div>
+
+    <div id="adminPanel" hidden>
+      <p class="admin-who" id="adminWho"></p>
+
+      <label class="toggle">
+        <input type="checkbox" id="openToggle" />
+        <span>Pronostics ouverts</span>
+      </label>
+
+      <h3>👶 Elle est née&nbsp;!</h3>
+      <form id="resultForm" class="admin-form admin-form--grid">
+        <label>Date <input type="date" name="date" required /></label>
+        <label>Heure <input type="time" name="time" required /></label>
+        <label>Poids (g) <input type="number" name="weight" min="1000" max="6000" required /></label>
+        <label>Taille (cm) <input type="number" name="height" min="30" max="65" step="0.5" required /></label>
+        <label>Cheveux <select name="hair" id="resultHair"></select></label>
+        <label>Ressemble à <select name="looks" id="resultLooks"></select></label>
+        <label class="span-2">Prénom <input type="text" name="babyName" maxlength="30" /></label>
+        <label class="span-2">Petit mot des parents <textarea name="note" rows="2" maxlength="400" placeholder="Maman et bébé vont bien…"></textarea></label>
+        <div class="span-2 admin-actions">
+          <button class="btn btn--coral" type="submit">🎉 Annoncer la naissance</button>
+          <button class="btn btn--ghost-dark" type="button" id="unpublishBtn">Masquer les résultats</button>
+        </div>
+        <p class="form__error span-2" id="resultError"></p>
+      </form>
+
+      <h3>🧹 Gérer les pronostics</h3>
+      <ul class="admin-list" id="adminList"></ul>
+
+      <button class="btn btn--ghost-dark" id="logoutBtn">Quitter le navire</button>
+    </div>
+  </dialog>
+
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+  <script src="js/config.js"></script>
+  <script src="js/store.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
