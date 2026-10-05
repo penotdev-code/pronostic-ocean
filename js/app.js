@@ -273,11 +273,30 @@
 
   /* ---------------- En-tête, compte à rebours, date limite ---------------- */
   function initHeader() {
-    $("#footerParents").textContent = cfg.parents || "";
+    renderParents();
     $("#footerBaby").textContent = cfg.babyNickname || "notre petite sirène";
-    if (cfg.parents) $("#heroKicker").textContent = cfg.parents + " vous annoncent…";
     if (!cfg.guessName) $("#nameField").remove();
     if (store.mode === "demo") $("#demoBanner").hidden = false;
+  }
+  function renderParents() {
+    $("#footerParents").textContent = cfg.parents || "";
+    $("#heroKicker").textContent = cfg.parents ? cfg.parents + " vous annoncent…" : "Avis à tous les moussaillons";
+  }
+
+  // Les parents et la date du terme réglés dans l'espace capitaine
+  // remplacent ceux de config.js
+  const baseCfg = { parents: cfg.parents, dueDate: cfg.dueDate };
+  function applySettings() {
+    const parents = state.parents || baseCfg.parents;
+    const dueDate = state.dueDate || baseCfg.dueDate;
+    if (parents !== cfg.parents) {
+      cfg.parents = parents;
+      renderParents();
+    }
+    if (dueDate !== cfg.dueDate) {
+      cfg.dueDate = dueDate;
+      calendar.refreshDue();
+    }
   }
 
   let wasOpen = null;
@@ -333,14 +352,19 @@
 
   /* ---------------- Sélecteur de date ---------------- */
   const calendar = (function () {
-    const due = parseDay(cfg.dueDate);
     const today = parseDay(dayToStr(Date.now()));
-    const min = isNaN(due) ? today : due - 60 * DAY;
-    const max = isNaN(due) ? today + 300 * DAY : due + 30 * DAY;
+    let due, min, max, view;
     let selected = null;
-    let view = isNaN(due) ? new Date(today) : new Date(due); // mois affiché (UTC)
-    view = Date.UTC(view.getUTCFullYear(), view.getUTCMonth(), 1);
     let box, input, choice;
+    // Recalculé quand le capitaine change la date du terme
+    function setRange() {
+      due = parseDay(cfg.dueDate);
+      min = isNaN(due) ? today : due - 60 * DAY;
+      max = isNaN(due) ? today + 300 * DAY : due + 30 * DAY;
+      const v = isNaN(due) ? new Date(today) : new Date(due); // mois affiché (UTC)
+      view = Date.UTC(v.getUTCFullYear(), v.getUTCMonth(), 1);
+    }
+    setRange();
 
     function monthStart(ms, delta) {
       const d = new Date(ms);
@@ -426,7 +450,11 @@
         choice.textContent = "Touche un jour dans le calendrier.";
         render();
       },
-      range: { min, max },
+      refreshDue() {
+        setRange();
+        if (selected !== null && (selected < min || selected > max)) this.reset();
+        else if (box) render();
+      },
     };
   })();
 
@@ -989,6 +1017,22 @@
       }
     });
 
+    $("#settingsForm").addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const f = e.target;
+      const parents = f.parents.value.trim();
+      const dueDate = f.dueDate.value;
+      if (!parents) return void ($("#settingsStatus").textContent = "Indique le nom des parents.");
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(dueDate)) return void ($("#settingsStatus").textContent = "Choisis la date du terme.");
+      try {
+        await store.setState({ parents, dueDate });
+        $("#settingsStatus").textContent = "";
+        toast("🐚 Infos du site mises à jour");
+      } catch (ex) {
+        $("#settingsStatus").textContent = "Erreur : " + ex.message;
+      }
+    });
+
     $("#deadlineForm").addEventListener("submit", async (e) => {
       e.preventDefault();
       const v = $("#deadlineInput").value;
@@ -1066,6 +1110,8 @@
   }
   function prefillAdmin() {
     $("#openToggle").checked = !!state.open;
+    $("#settingsForm").parents.value = cfg.parents || "";
+    $("#settingsForm").dueDate.value = cfg.dueDate || "";
     $("#deadlineInput").value = state.deadline ? toLocalInput(state.deadline) : "";
     $("#deadlineStatus").textContent = state.deadline
       ? (deadlinePassed() ? "Votes clos depuis le " : "Les votes se fermeront le ") + fmtDateTime(state.deadline) + "."
@@ -1147,6 +1193,7 @@
   }, onError);
   store.onState((s) => {
     state = s;
+    applySettings();
     syncSubs();
     renderAll();
   }, onError);

@@ -184,6 +184,8 @@ function validStatePatch(patch) {
   for (const [k, v] of Object.entries(patch)) {
     if (k === 'open' || k === 'born') { if (typeof v !== 'boolean') return false; }
     else if (k === 'deadline') { if (!num(v, 0, 8.64e15)) return false; }
+    else if (k === 'parents') { if (!str(v, 1, 60)) return false; }
+    else if (k === 'dueDate') { if (typeof v !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(v) || isNaN(Date.parse(v))) return false; }
     else if (k === 'result') { if (v !== null && (typeof v !== 'object' || JSON.stringify(v).length > 4000)) return false; }
     else return false;
   }

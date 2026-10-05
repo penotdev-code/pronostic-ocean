@@ -249,6 +249,16 @@
         <span>Pronostics ouverts</span>
       </label>
 
+      <h3>🐚 Infos du site</h3>
+      <form id="settingsForm" class="admin-form admin-form--grid">
+        <label>Les parents <input type="text" name="parents" maxlength="60" placeholder="Papa &amp; Maman" required /></label>
+        <label>Date du terme <input type="date" name="dueDate" required /></label>
+        <div class="admin-actions span-2">
+          <button class="btn btn--coral" type="submit">Enregistrer</button>
+        </div>
+        <p class="admin-who span-2" id="settingsStatus"></p>
+      </form>
+
       <h3>⏳ Date de fin des votes</h3>
       <form id="deadlineForm" class="admin-form admin-form--inline">
         <label>Fin des votes <input type="datetime-local" name="deadline" id="deadlineInput" /></label>
