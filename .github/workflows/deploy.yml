@@ -1,0 +1,39 @@
+name: Déployer sur le VPS
+
+# À chaque push sur la branche publiée, le VPS récupère le code et
+# reconstruit le site. La clé SSH (secret VPS_SSH_KEY) ne peut lancer
+# QUE le script de déploiement : elle ne donne pas de shell sur le serveur.
+on:
+  push:
+    branches: [claude/ocean-baby-prediction-site-izm4mi]
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-vps
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: production
+      url: https://petite-sirene.paulpenot.fr
+    steps:
+      - name: Déploiement sur le VPS
+        env:
+          SSH_KEY: ${{ secrets.VPS_SSH_KEY }}
+        run: |
+          install -m 700 -d ~/.ssh
+          printf '%s\n' "$SSH_KEY" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          # Empreinte du serveur épinglée : refuse tout autre serveur
+          echo "57.129.170.247 ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIBStox2zon+AsLZMunnUNU0aTyhFpTp4JpHNkkGmCuKn" > ~/.ssh/known_hosts
+          ssh -i ~/.ssh/deploy_key -o BatchMode=yes -o StrictHostKeyChecking=yes ubuntu@57.129.170.247
+
+      - name: Vérification du site
+        run: |
+          for i in $(seq 1 12); do
+            curl -fsS https://petite-sirene.paulpenot.fr/api/health && exit 0
+            sleep 5
+          done
+          exit 1

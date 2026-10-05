@@ -1,6 +1,7 @@
 /* ==========================================================
    🗄️  Stockage des pronostics
    - Firebase (Firestore + Auth) si configuré dans config.js
+   - sinon le serveur maison (server/server.js) si `api` est défini
    - sinon mode démo : localStorage du navigateur
 
    Confidentialité (appliquée par les règles Firestore) :
@@ -247,5 +248,138 @@
     };
   }
 
-  window.OceanStore = hasFirebase ? createFirebaseStore() : createLocalStore();
+  /* ---------------- Serveur maison (server/server.js) ---------------- */
+  function createApiStore() {
+    const base = String(cfg.api).replace(/\/$/, "");
+    const POLL_MS = 3000;
+    let snap = null;
+    let etag = null;
+    let me = null;
+    let failing = false;
+    const watchers = new Set();
+    const authCbs = [];
+
+    async function call(method, path, body) {
+      const r = await fetch(base + path, {
+        method,
+        credentials: "same-origin",
+        headers: body !== undefined ? { "Content-Type": "application/json" } : {},
+        body: body !== undefined ? JSON.stringify(body) : undefined,
+      });
+      const data = await r.json().catch(() => ({}));
+      if (!r.ok) {
+        const e = new Error(data.error || "Erreur " + r.status);
+        e.code = r.status === 403 ? "permission-denied" : "http-" + r.status;
+        throw e;
+      }
+      return data;
+    }
+
+    // Une seule requête légère toutes les 3 s : le serveur répond 304
+    // tant que rien n'a changé.
+    async function refresh() {
+      const r = await fetch(base + "/snapshot", {
+        credentials: "same-origin",
+        cache: "no-store",
+        headers: etag ? { "If-None-Match": etag } : {},
+      });
+      if (r.status === 304) return;
+      if (!r.ok) throw new Error("Erreur " + r.status);
+      etag = r.headers.get("ETag");
+      snap = await r.json();
+      const prev = me;
+      me = snap.me;
+      if (!prev || prev.uid !== me.uid || prev.isAdmin !== me.isAdmin) authCbs.forEach((cb) => cb(Object.assign({}, me)));
+      watchers.forEach((w) => w.run());
+    }
+
+    function poll() {
+      refresh().then(
+        () => {
+          failing = false;
+          setTimeout(poll, POLL_MS);
+        },
+        (ex) => {
+          if (!failing) watchers.forEach((w) => w.onError && w.onError(ex));
+          failing = true;
+          setTimeout(poll, POLL_MS * 3);
+        }
+      );
+    }
+    const ready = refresh();
+    ready.then(() => setTimeout(poll, POLL_MS), () => setTimeout(poll, POLL_MS * 3));
+    document.addEventListener("visibilitychange", () => {
+      if (!document.hidden) refresh().catch(() => {});
+    });
+
+    // N'appelle cb que si la partie des données qui l'intéresse a changé
+    function watch(select, cb, onError) {
+      const w = {
+        last: null,
+        onError,
+        run() {
+          if (!snap) return;
+          const v = select(snap);
+          if (v === undefined) return;
+          const key = JSON.stringify(v);
+          if (key === w.last) return;
+          w.last = key;
+          cb(JSON.parse(key));
+        },
+      };
+      watchers.add(w);
+      w.run();
+      return () => watchers.delete(w);
+    }
+
+    const write = async (method, path, body) => {
+      const out = await call(method, path, body);
+      await refresh().catch(() => {});
+      return out;
+    };
+
+    return {
+      mode: "api",
+      ready,
+      onAuth(cb) {
+        authCbs.push(cb);
+        if (me) cb(Object.assign({}, me));
+      },
+      onState(cb, onError) {
+        return watch((s) => Object.assign({}, DEFAULT_STATE, s.state), cb, onError);
+      },
+      watchVoters(cb, onError) {
+        return watch((s) => s.voters, cb, onError);
+      },
+      watchAnswers(cb, onError) {
+        return watch((s) => s.answers, cb, onError);
+      },
+      watchPredictions(cb, onError) {
+        return watch((s) => s.predictions, cb, onError);
+      },
+      watchMine(uid, cb, onError) {
+        return watch((s) => s.mine, cb, onError);
+      },
+      watchMessages(opts, cb, onError) {
+        return watch((s) => s.messages, cb, onError);
+      },
+      async addPrediction(p, message) {
+        return (await write("POST", "/predictions", { prediction: p, message })).id;
+      },
+      async deletePrediction(id) {
+        await write("DELETE", "/predictions/" + encodeURIComponent(id));
+      },
+      async setState(patch) {
+        await write("PATCH", "/state", patch);
+      },
+      async login(email, password) {
+        await write("POST", "/login", { email, password });
+      },
+      async logout() {
+        await write("POST", "/logout", {});
+      },
+    };
+  }
+
+  window.OceanStore = hasFirebase ? createFirebaseStore() : cfg.api ? createApiStore() : createLocalStore();
 })();

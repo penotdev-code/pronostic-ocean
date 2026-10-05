@@ -17,8 +17,12 @@ window.OCEAN_CONFIG = {
   // Email du compte Firebase autorisé à saisir les résultats (le « capitaine »)
   adminEmail: "penot.dev@gmail.com",
 
-  // Configuration Firebase (console Firebase > Paramètres du projet > Vos applications > Web).
-  // Tant que ce bloc est vide, le site fonctionne en MODE DÉMO :
+  // Adresse de l'API du serveur maison (server/server.js), qui stocke les
+  // pronostics sur le VPS. Mettre "" pour utiliser Firebase ou le mode démo.
+  api: "/api",
+
+  // Configuration Firebase (optionnelle, prioritaire si remplie ; console Firebase > Paramètres du projet > Vos applications > Web).
+  // Si ce bloc est vide et `api` aussi, le site fonctionne en MODE DÉMO :
   // les pronostics sont enregistrés uniquement dans le navigateur.
   firebase: {
     apiKey: "",

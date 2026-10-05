@@ -1125,7 +1125,7 @@
   /* ---------------- Démarrage ---------------- */
   function onError(ex) {
     console.error(ex);
-    toast("⚠️ Impossible de joindre l'océan (base de données). Vérifie la configuration Firebase.", 6000);
+    toast("⚠️ Impossible de joindre l'océan (base de données). Réessaie dans un instant.", 6000);
   }
 
   initHeader();
