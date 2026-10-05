@@ -450,6 +450,8 @@ input[type="range"] { flex: 1; accent-color: var(--coral); height: 28px; }
 .admin-form--grid { grid-template-columns: 1fr 1fr; }
 .span-2 { grid-column: 1 / -1; }
 .admin-actions { display: flex; flex-wrap: wrap; gap: 10px; }
+.admin-links { margin-bottom: 16px; }
+.admin-links .btn { text-decoration: none; }
 .admin-who { font-size: .9rem; opacity: .8; margin: 0 0 12px; }
 .toggle { display: flex; align-items: center; gap: 10px; font-weight: 800; cursor: pointer; }
 .toggle input { width: 22px; height: 22px; accent-color: var(--coral); }

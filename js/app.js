@@ -976,6 +976,15 @@
       modal.showModal();
     });
     if (location.hash === "#capitaine") setTimeout(() => $("#adminOpen").click(), 300);
+    // Liens vers les statistiques : on ferme la fenêtre puis on descend à la section
+    modal.querySelectorAll("[data-close-admin]").forEach((link) =>
+      link.addEventListener("click", (e) => {
+        e.preventDefault();
+        modal.close();
+        const target = $(link.getAttribute("href"));
+        if (target) setTimeout(() => target.scrollIntoView({ behavior: "smooth", block: "start" }), 50);
+      })
+    );
 
     store.onAuth((a) => {
       const changed = a.uid !== auth.uid || a.isAdmin !== auth.isAdmin;
