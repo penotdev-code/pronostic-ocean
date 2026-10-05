@@ -92,6 +92,8 @@
     });
     s.push({ type: "fact", icon: "💇", title: "Côté cheveux…", value: ctx.labelOf(ctx.HAIR, r.hair), sub: matchLine(list, "hair", r.hair) });
     s.push({ type: "fact", icon: "🪞", title: "Elle ressemble à…", value: ctx.labelOf(ctx.LOOKS, r.looks), sub: matchLine(list, "looks", r.looks) });
+    if (r.papaWhere) s.push({ type: "fact", icon: "👨", title: "Au début du travail, papa était…", value: ctx.labelOf(ctx.WHERE, r.papaWhere), sub: matchLine(list, "papaWhere", r.papaWhere) });
+    if (r.mamanWhere) s.push({ type: "fact", icon: "👩", title: "Et maman était…", value: ctx.labelOf(ctx.WHERE, r.mamanWhere), sub: matchLine(list, "mamanWhere", r.mamanWhere) });
     if (ctx.guessName && r.babyName) {
       const ok = list.filter((p) => ctx.norm(p.babyName) && ctx.norm(p.babyName) === ctx.norm(r.babyName));
       s.push({

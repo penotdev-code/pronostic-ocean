@@ -47,6 +47,7 @@
         <div class="countdown__item"><span id="cdSeconds">–</span><small>secondes</small></div>
       </div>
       <p class="countdown__caption" id="countdownCaption"></p>
+      <p class="deadline-pill" id="deadlinePill" hidden></p>
 
       <div class="hero__actions">
         <a class="btn btn--coral" href="#pronostic" id="ctaPredict">🍾 Jeter ma bouteille à la mer</a>
@@ -68,6 +69,29 @@
   </header>
 
   <main>
+    <!-- ============ TABLEAU DE BORD DU CAPITAINE (visible seulement par les parents) ============ -->
+    <section class="zone zone--captain" id="dashboard" hidden>
+      <div class="container">
+        <h2 class="zone__title">🧭 Tableau de bord du capitaine</h2>
+        <p class="zone__intro">Visible uniquement par toi. Les joueurs, eux, ne voient que des statistiques anonymes.</p>
+        <div class="dash-kpis" id="dashKpis"></div>
+        <div class="dash-tabs" role="tablist">
+          <button type="button" role="tab" class="dash-tab" aria-selected="true" data-tab="table">📋 Tous les pronostics</button>
+          <button type="button" role="tab" class="dash-tab" aria-selected="false" data-tab="stats">📊 Statistiques détaillées</button>
+          <button type="button" role="tab" class="dash-tab" aria-selected="false" data-tab="messages">💌 Mots doux</button>
+        </div>
+        <div class="dash-panel" data-panel="table">
+          <div class="dash-tools">
+            <input type="search" id="dashSearch" placeholder="Rechercher un nom…" aria-label="Rechercher un nom" />
+            <button type="button" class="btn btn--ghost" id="dashCsv">⬇️ Exporter en CSV</button>
+          </div>
+          <div class="dash-table" id="dashTable"></div>
+        </div>
+        <div class="dash-panel" data-panel="stats" hidden><div class="stats" id="dashStats"></div></div>
+        <div class="dash-panel" data-panel="messages" hidden><div class="dash-messages" id="dashMessages"></div></div>
+      </div>
+    </section>
+
     <!-- ============ RÉSULTATS (après la naissance) ============ -->
     <section class="zone zone--treasure" id="tresor" hidden>
       <div class="container">
@@ -92,11 +116,10 @@
     <section class="zone zone--1" id="pronostic">
       <div class="container">
         <h2 class="zone__title">🍾 Ta bouteille à la mer</h2>
-        <p class="zone__intro" id="formIntro">Remplis ton parchemin, glisse-le dans la bouteille, et que le meilleur gagne&nbsp;! Les points sont attribués selon la précision de chaque réponse (100 points au maximum).</p>
+        <p class="zone__intro" id="formIntro">Remplis ton parchemin, glisse-le dans la bouteille, et que le meilleur gagne&nbsp;! Les points sont attribués selon la précision de chaque réponse (100 points au maximum). Les pronostics des autres se dévoilent une fois que tu as joué.</p>
+        <p class="deadline-note" id="deadlineNote" hidden></p>
 
-        <div class="closed-note" id="closedNote" hidden>
-          ⚓ Les pronostics sont fermés : la marée est passée&nbsp;! Merci à tous les moussaillons.
-        </div>
+        <div class="closed-note" id="closedNote" hidden></div>
 
         <form class="parchment" id="predictionForm" novalidate>
           <fieldset class="field field--wide">
@@ -109,10 +132,11 @@
             <div class="avatars" id="avatarPicker" role="radiogroup"></div>
           </fieldset>
 
-          <fieldset class="field">
+          <fieldset class="field field--wide">
             <legend>📅 Date de naissance</legend>
-            <input type="date" name="date" required />
-            <small class="hint" id="dateHint"></small>
+            <input type="hidden" name="date" />
+            <div class="calendar" id="datePicker"></div>
+            <p class="calendar__choice" id="dateChoice" aria-live="polite">Touche un jour dans le calendrier.</p>
           </fieldset>
 
           <fieldset class="field">
@@ -146,6 +170,16 @@
             <div class="chips" id="looksPicker"></div>
           </fieldset>
 
+          <fieldset class="field field--wide">
+            <legend>👨 Où sera papa au début du travail&nbsp;?</legend>
+            <div class="chips" id="papaPicker"></div>
+          </fieldset>
+
+          <fieldset class="field field--wide">
+            <legend>👩 Où sera maman au début du travail&nbsp;?</legend>
+            <div class="chips" id="mamanPicker"></div>
+          </fieldset>
+
           <fieldset class="field field--wide" id="nameField">
             <legend>✨ Son prénom (bonus !)</legend>
             <input type="text" name="babyName" maxlength="30" placeholder="Ton intuition…" />
@@ -154,7 +188,7 @@
           <fieldset class="field field--wide">
             <legend>💌 Un petit mot pour elle</legend>
             <textarea name="message" maxlength="280" rows="3" placeholder="Il sera gardé précieusement dans son coffre à trésors…"></textarea>
-            <small class="hint"><span id="msgCount">0</span>/280</small>
+            <small class="hint">🔒 Seuls les futurs parents pourront le lire. · <span id="msgCount">0</span>/280</small>
           </fieldset>
 
           <div class="form__footer field--wide">
@@ -169,7 +203,8 @@
     <section class="zone zone--2" id="courants">
       <div class="container">
         <h2 class="zone__title">🌊 Les courants de l'équipage</h2>
-        <p class="zone__intro">Ce que pense la majorité… (mais la majorité a-t-elle raison&nbsp;?)</p>
+        <p class="zone__intro">Ce que pense la majorité, de façon anonyme… (mais la majorité a-t-elle raison&nbsp;?)</p>
+        <div class="lock" id="statsLock" hidden></div>
         <div class="stats" id="stats"></div>
       </div>
     </section>
@@ -179,6 +214,7 @@
       <div class="container">
         <h2 class="zone__title">🐠 Le banc des pronostics</h2>
         <p class="zone__intro" id="bancIntro">Toutes les bouteilles repêchées jusqu'ici.</p>
+        <div class="lock" id="bancLock" hidden></div>
         <div class="cards" id="cards"></div>
       </div>
     </section>
@@ -186,8 +222,8 @@
     <!-- ============ MESSAGES ============ -->
     <section class="zone zone--4" id="messages">
       <div class="container">
-        <h2 class="zone__title">💌 Les mots doux des abysses</h2>
-        <p class="zone__intro">Clique sur un coquillage pour l'ouvrir.</p>
+        <h2 class="zone__title">💌 Ton mot doux</h2>
+        <p class="zone__intro">Il est gardé au coffre : seuls les futurs parents peuvent le lire. Clique sur le coquillage pour le relire.</p>
         <div class="shells" id="shells"></div>
       </div>
     </section>
@@ -226,6 +262,16 @@
         <span>Pronostics ouverts</span>
       </label>
 
+      <h3>⏳ Date de fin des votes</h3>
+      <form id="deadlineForm" class="admin-form admin-form--inline">
+        <label>Fin des votes <input type="datetime-local" name="deadline" id="deadlineInput" /></label>
+        <div class="admin-actions">
+          <button class="btn btn--coral" type="submit">Enregistrer</button>
+          <button class="btn btn--ghost-dark" type="button" id="deadlineClear">Pas de date limite</button>
+        </div>
+        <p class="admin-who" id="deadlineStatus"></p>
+      </form>
+
       <h3>👶 Elle est née&nbsp;!</h3>
       <form id="resultForm" class="admin-form admin-form--grid">
         <label>Date <input type="date" name="date" required /></label>
@@ -234,6 +280,8 @@
         <label>Taille (cm) <input type="number" name="height" min="30" max="65" step="0.5" required /></label>
         <label>Cheveux <select name="hair" id="resultHair"></select></label>
         <label>Ressemble à <select name="looks" id="resultLooks"></select></label>
+        <label>Papa au début du travail <select name="papaWhere" id="resultPapa"></select></label>
+        <label>Maman au début du travail <select name="mamanWhere" id="resultMaman"></select></label>
         <label class="span-2">Prénom <input type="text" name="babyName" maxlength="30" /></label>
         <label class="span-2">Petit mot des parents <textarea name="note" rows="2" maxlength="400" placeholder="Maman et bébé vont bien…"></textarea></label>
         <div class="span-2 admin-actions">
@@ -244,7 +292,7 @@
         <p class="form__error span-2" id="resultError"></p>
       </form>
 
-      <h3>🧹 Gérer les pronostics</h3>
+      <h3>🧹 Supprimer un pronostic</h3>
       <ul class="admin-list" id="adminList"></ul>
 
       <button class="btn btn--ghost-dark" id="logoutBtn">Quitter le navire</button>
