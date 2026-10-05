@@ -70,7 +70,17 @@ Le site sera sur `https://<ton-projet>.web.app`.
 
 Tout en bas de la page, clique sur l'ancre **⚓** (ou ajoute `#capitaine` à l'adresse), connecte-toi, puis :
 - **Pronostics ouverts** : décoche pour fermer les paris (par exemple au début du travail 😉).
-- **Elle est née !** : saisis les vraies infos et clique sur **Annoncer la naissance** → confettis, fiche de naissance et classement apparaissent pour tout le monde.
+- **Elle est née !** : saisis les vraies infos.
+  - **👀 Répéter le reveal (privé)** : tu vois le reveal tel que tout le monde le verra, sans rien publier.
+  - **🎉 Annoncer la naissance** : publie les résultats pour tout le monde.
+
+### 🎬 Le grand reveal
+
+À l'annonce, chaque visiteur voit (une seule fois, automatiquement) une révélation plein écran, étape par étape :
+une bouteille échoue sur la plage → la date, l'heure, le poids, la taille, les cheveux et la ressemblance sont dévoilés un par un avec roulement de tambour (et le nom du plus proche à chaque fois) → le prénom apparaît lettre par lettre → le classement remonte du dernier jusqu'au premier, avec suspense pour le podium → les trophées.
+Un clic (ou la barre espace) accélère l'animation ; le bouton « Revoir le grand reveal » permet de le relancer.
+
+Sous le reveal, la page affiche ensuite : ton résultat personnel, le podium, les trophées (calendrier vivant, chronomètre, balance, devin du prénom, le plus pressé, le plus patient, prix du poisson-lune…) et **le classement complet, où chaque participant peut ouvrir le détail de ses points critère par critère**.
 - Tu peux aussi supprimer un pronostic (doublon, blague…).
 
 ## 🧪 Tester en local

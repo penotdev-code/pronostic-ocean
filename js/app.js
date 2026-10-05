@@ -26,6 +26,7 @@
   let state = { open: true, born: false, result: null };
   let isAdmin = false;
   let mine = readMine();
+  const loaded = { predictions: false, state: false };
 
   /* ---------------- Utilitaires ---------------- */
   function esc(s) {
@@ -100,27 +101,89 @@
   }
 
   /* ---------------- Score ---------------- */
+  // Écarts entre un pronostic et la réalité
+  const DIFF = {
+    days: (p, r) => Math.round(Math.abs(parseDay(p.date) - parseDay(r.date)) / DAY),
+    minutes: (p, r) => {
+      const dm = Math.abs(minutes(p.time) - minutes(r.time));
+      return Math.min(dm, 1440 - dm);
+    },
+    grams: (p, r) => Math.abs(Number(p.weight) - Number(r.weight)),
+    cm: (p, r) => Math.round(Math.abs(Number(p.height) - Number(r.height)) * 10) / 10,
+  };
+  const nameMatch = (p, r) => !!(cfg.guessName && r.babyName && norm(p.babyName) && norm(p.babyName) === norm(r.babyName));
+
   function scoreOf(p, r) {
     if (!r) return null;
     const d = {};
-    const dd = Math.abs(parseDay(p.date) - parseDay(r.date)) / DAY;
-    d.date = isNaN(dd) ? 0 : Math.max(0, SCORE.date - 3 * Math.round(dd));
-    let dm = Math.abs(minutes(p.time) - minutes(r.time));
-    dm = Math.min(dm, 1440 - dm);
+    const dd = DIFF.days(p, r);
+    d.date = isNaN(dd) ? 0 : Math.max(0, SCORE.date - 3 * dd);
+    const dm = DIFF.minutes(p, r);
     d.time = isNaN(dm) ? 0 : Math.max(0, SCORE.time - Math.floor(dm / 30));
-    d.weight = Math.max(0, SCORE.weight - Math.floor(Math.abs(p.weight - r.weight) / 50));
-    d.height = Math.max(0, SCORE.height - Math.round(2 * Math.abs(p.height - r.height)));
+    d.weight = Math.max(0, SCORE.weight - Math.floor(DIFF.grams(p, r) / 50));
+    d.height = Math.max(0, SCORE.height - Math.round(2 * DIFF.cm(p, r)));
     d.hair = p.hair && p.hair === r.hair ? SCORE.hair : 0;
     d.looks = p.looks && p.looks === r.looks ? SCORE.looks : 0;
-    d.name = cfg.guessName && r.babyName && norm(p.babyName) && norm(p.babyName) === norm(r.babyName) ? SCORE.name : 0;
+    d.name = nameMatch(p, r) ? SCORE.name : 0;
     d.total = Object.values(d).reduce((a, b) => a + b, 0);
     return d;
   }
+  /* Classement : les ex æquo partagent la même place */
+  function rankWith(list, r) {
+    const out = list
+      .map((p) => Object.assign({}, p, { score: scoreOf(p, r) }))
+      .sort((a, b) => b.score.total - a.score.total || a.createdAt - b.createdAt);
+    out.forEach((p, i) => (p.rank = i > 0 && p.score.total === out[i - 1].score.total ? out[i - 1].rank : i + 1));
+    return out;
+  }
   function ranked() {
     if (!state.born || !state.result) return predictions.slice();
-    return predictions
-      .map((p) => Object.assign({}, p, { score: scoreOf(p, state.result) }))
-      .sort((a, b) => b.score.total - a.score.total || a.createdAt - b.createdAt);
+    return rankWith(predictions, state.result);
+  }
+  const medal = (rank) => ["🥇", "🥈", "🥉"][rank - 1] || rank + "e";
+  function fmtDuration(m) {
+    if (m < 60) return m + " min";
+    const h = Math.floor(m / 60);
+    return h + "h" + (m % 60 ? String(m % 60).padStart(2, "0") : "");
+  }
+
+  /* Trophées rigolos décernés après la naissance */
+  function trophies(list, r) {
+    if (!list.length) return [];
+    const best = (fn) => {
+      const vals = list.map((p) => ({ p, v: fn(p) })).filter((x) => !isNaN(x.v));
+      if (!vals.length) return { who: [], v: NaN };
+      const min = Math.min(...vals.map((x) => x.v));
+      return { who: vals.filter((x) => x.v === min).map((x) => x.p), v: min };
+    };
+    const t = [];
+    const add = (icon, title, b, detail) => b.who.length && t.push({ icon, title, who: b.who, detail: detail(b.v) });
+    add("📅", "Le calendrier vivant", best((p) => DIFF.days(p, r)), (v) => (v ? `à ${v} jour${v > 1 ? "s" : ""} près` : "le jour exact !"));
+    add("⏱️", "Le chronomètre", best((p) => DIFF.minutes(p, r)), (v) => (v ? "à " + fmtDuration(v) + " près" : "à la minute près !"));
+    add("⚖️", "La balance de précision", best((p) => DIFF.grams(p, r)), (v) => (v ? `à ${v} g près` : "au gramme près !"));
+    add("📏", "Le mètre ruban", best((p) => DIFF.cm(p, r)), (v) => (v ? `à ${String(v).replace(".", ",")} cm près` : "pile la bonne taille !"));
+    const finders = list.filter((p) => nameMatch(p, r));
+    if (finders.length) t.push({ icon: "🔮", title: "Le devin", who: finders, detail: "a trouvé le prénom" });
+    add("🐇", "Le plus pressé", best((p) => parseDay(p.date)), (v) => "la voyait arriver le " + fmtDay(v, { weekday: undefined }));
+    add("🐢", "Le plus patient", best((p) => -parseDay(p.date)), (v) => "la voyait arriver le " + fmtDay(-v, { weekday: undefined }));
+    add("🐳", "Voit les choses en grand", best((p) => -Number(p.weight)), (v) => "pariait sur " + fmtWeight(-v));
+    if (list.length > 3) {
+      const rk = rankWith(list, r);
+      const last = rk[rk.length - 1];
+      t.push({ icon: "🐡", title: "Prix du poisson-lune", who: rk.filter((p) => p.rank === last.rank), detail: "on t'aime quand même 💙" });
+    }
+    return t;
+  }
+  function trophiesHtml(list, r) {
+    const t = trophies(list, r);
+    if (!t.length) return '<p class="empty">Pas de trophée cette fois.</p>';
+    return t.map((x) => `
+      <div class="trophy">
+        <div class="trophy__icon">${x.icon}</div>
+        <div class="trophy__title">${esc(x.title)}</div>
+        <div class="trophy__who">${x.who.slice(0, 4).map((p) => esc(p.avatar) + " " + esc(p.name)).join("<br />")}${x.who.length > 4 ? "<br />+ " + (x.who.length - 4) : ""}</div>
+        <div class="trophy__detail">${esc(x.detail)}</div>
+      </div>`).join("");
   }
 
   /* ---------------- Décor ---------------- */
@@ -508,13 +571,87 @@
       ${r.note ? `<p class="birth-card__note">« ${esc(r.note)} »</p>` : ""}`;
 
     const list = ranked();
-    const medals = ["🥇", "🥈", "🥉"];
     $("#podium").innerHTML = list.slice(0, 3).map((p, i) =>
-      `<li class="p${i + 1}"><div class="podium__medal">${medals[i]}</div><div class="podium__avatar">${esc(p.avatar)}</div><div class="podium__name">${esc(p.name)}</div><div class="podium__pts">${p.score.total} / ${MAX_SCORE}</div></li>`
+      `<li class="p${i + 1}"><div class="podium__medal">${medal(p.rank)}</div><div class="podium__avatar">${esc(p.avatar)}</div><div class="podium__name">${esc(p.name)}</div><div class="podium__pts">${p.score.total} / ${MAX_SCORE}</div></li>`
     ).join("");
-    $("#leaderboard").innerHTML = list.slice(3).map((p, i) =>
-      `<div class="lb-row"><span class="lb-row__rank">${i + 4}</span><span class="lb-row__avatar">${esc(p.avatar)}</span><span>${esc(p.name)}</span><span class="lb-row__pts">${p.score.total} pts</span></div>`
+
+    const myOnes = list.filter((p) => mine.includes(p.id));
+    $("#myResult").hidden = !myOnes.length;
+    $("#myResult").innerHTML = myOnes.map((p) =>
+      `<p>${esc(p.avatar)} <b>${esc(p.name)}</b>, tu termines <b>${p.rank === 1 ? "1re" : p.rank + "e"}</b> sur ${list.length} avec <b>${p.score.total} points</b> ${p.rank <= 3 ? "🏆" : p.rank <= Math.ceil(list.length / 2) ? "👏" : "🐟"}</p>`
     ).join("");
+
+    $("#trophies").innerHTML = trophiesHtml(predictions, r);
+
+    $("#leaderboard").innerHTML = list.length
+      ? list.map((p) => `
+        <details class="lb-row${mine.includes(p.id) ? " is-mine" : ""}${p.rank <= 3 ? " lb-row--top" : ""}">
+          <summary>
+            <span class="lb-row__rank">${medal(p.rank)}</span>
+            <span class="lb-row__avatar">${esc(p.avatar)}</span>
+            <span class="lb-row__name">${esc(p.name)}</span>
+            <span class="lb-row__bar" aria-hidden="true"><span style="width:${(p.score.total / MAX_SCORE) * 100}%"></span></span>
+            <span class="lb-row__pts">${p.score.total} pts</span>
+          </summary>
+          ${breakdownHtml(p, r)}
+        </details>`).join("")
+      : '<p class="empty">Aucun pronostic n\'avait été lancé.</p>';
+  }
+
+  /* Détail des points d'un participant, critère par critère */
+  function breakdownHtml(p, r) {
+    const sc = p.score;
+    const ecart = (v, unit) => (v === 0 ? "🎯 pile !" : unit(v));
+    const rows = [
+      ["📅", "Date", fmtDay(p.date, { weekday: undefined }), fmtDay(r.date, { weekday: undefined }), ecart(DIFF.days(p, r), (v) => v + " j"), sc.date, SCORE.date],
+      ["🕰️", "Heure", fmtTime(p.time), fmtTime(r.time), ecart(DIFF.minutes(p, r), fmtDuration), sc.time, SCORE.time],
+      ["⚖️", "Poids", fmtWeight(p.weight), fmtWeight(r.weight), ecart(DIFF.grams(p, r), (v) => v + " g"), sc.weight, SCORE.weight],
+      ["📏", "Taille", fmtHeight(p.height), fmtHeight(r.height), ecart(DIFF.cm(p, r), (v) => String(v).replace(".", ",") + " cm"), sc.height, SCORE.height],
+      ["💇", "Cheveux", labelOf(HAIR, p.hair), labelOf(HAIR, r.hair), sc.hair ? "✅" : "❌", sc.hair, SCORE.hair],
+      ["🪞", "Ressemblance", labelOf(LOOKS, p.looks), labelOf(LOOKS, r.looks), sc.looks ? "✅" : "❌", sc.looks, SCORE.looks],
+    ];
+    if (cfg.guessName) rows.push(["✨", "Prénom", p.babyName || "–", r.babyName || "–", sc.name ? "✅" : "❌", sc.name, SCORE.name]);
+    return `<div class="breakdown"><table>
+      <thead><tr><th></th><th>Pronostic</th><th>Réalité</th><th>Écart</th><th>Points</th></tr></thead>
+      <tbody>${rows.map((x) => `<tr><th scope="row"><span aria-hidden="true">${x[0]}</span> ${x[1]}</th><td>${esc(x[2])}</td><td>${esc(x[3])}</td><td>${esc(x[4])}</td><td class="breakdown__pts"><b>${x[5]}</b>/${x[6]}</td></tr>`).join("")}</tbody>
+      <tfoot><tr><th scope="row">Total</th><td colspan="3"></td><td class="breakdown__pts"><b>${sc.total}</b>/${MAX_SCORE}</td></tr></tfoot>
+    </table></div>`;
+  }
+
+  /* ---------------- Le grand reveal ---------------- */
+  function revealKey(r) {
+    return "ocean.revealSeen." + r.date + "T" + r.time;
+  }
+  function startReveal(r, opts = {}) {
+    if (!window.OceanReveal || !r) return;
+    if (!opts.preview) {
+      try {
+        localStorage.setItem(revealKey(r), "1");
+      } catch (e) {}
+    }
+    OceanReveal.start({
+      result: r,
+      predictions: predictions.slice(),
+      ranked: rankWith(predictions, r),
+      mine,
+      nickname: cfg.babyNickname || "notre petite sirène",
+      guessName: !!cfg.guessName,
+      HAIR, LOOKS, esc, norm, labelOf, medal, confetti,
+      fmtDay, fmtTime, fmtWeight, fmtHeight, fmtDuration,
+      diff: DIFF,
+      trophiesHtml: () => trophiesHtml(predictions, r),
+      onClose: () => {
+        if (!opts.preview && state.born) $("#tresor").scrollIntoView({ behavior: "smooth" });
+      },
+    });
+  }
+  function maybeAutoReveal() {
+    if (!loaded.predictions || !loaded.state || !state.born || !state.result) return;
+    let seen = false;
+    try {
+      seen = localStorage.getItem(revealKey(state.result)) === "1";
+    } catch (e) {}
+    if (!seen && !document.body.classList.contains("is-revealing")) startReveal(state.result);
   }
 
   function renderFormState() {
@@ -584,9 +721,8 @@
       }
     });
 
-    $("#resultForm").addEventListener("submit", async (e) => {
-      e.preventDefault();
-      const f = e.target;
+    function readResult() {
+      const f = $("#resultForm");
       const result = {
         date: f.date.value,
         time: f.time.value,
@@ -600,14 +736,28 @@
       $("#resultError").textContent = "";
       if (!result.date || !result.time || !result.weight || !result.height) {
         $("#resultError").textContent = "Remplis la date, l'heure, le poids et la taille.";
-        return;
+        return null;
       }
+      return result;
+    }
+
+    // Aperçu privé : le capitaine répète le reveal sans rien publier
+    $("#previewRevealBtn").addEventListener("click", () => {
+      const result = readResult();
+      if (!result) return;
+      modal.close();
+      startReveal(result, { preview: true });
+    });
+
+    $("#resultForm").addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const result = readResult();
+      if (!result) return;
+      if (!confirm("Annoncer la naissance à tout l'équipage ? Tout le monde verra le reveal et le classement.")) return;
       try {
         await store.setState({ born: true, open: false, result });
         modal.close();
-        confetti();
-        toast("🎉 Bienvenue petite sirène !", 5000);
-        setTimeout(() => $("#tresor").scrollIntoView({ behavior: "smooth" }), 400);
+        // Le reveal se lance tout seul via onState (pour le capitaine comme pour les autres)
       } catch (ex) {
         $("#resultError").textContent = "Erreur : " + ex.message;
       }
@@ -696,12 +846,16 @@
   store.ready.catch(onError);
   store.onPredictions((list) => {
     predictions = list;
+    loaded.predictions = true;
     renderAll();
+    maybeAutoReveal();
   }, onError);
   store.onState((s) => {
-    const wasBorn = state.born;
     state = s;
+    loaded.state = true;
     renderAll();
-    if (s.born && !wasBorn && predictions.length) confetti();
+    maybeAutoReveal();
   }, onError);
+
+  $("#replayRevealBtn").addEventListener("click", () => startReveal(state.result, { preview: true }));
 })();
