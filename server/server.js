@@ -78,6 +78,13 @@ db.exec(`
     created_at INTEGER NOT NULL
   );
   CREATE TABLE IF NOT EXISTS meta (key TEXT PRIMARY KEY, value TEXT NOT NULL);
+  -- Code de bouteille : permet de retrouver son identité (et donc ses
+  -- pronostics) sur un autre appareil
+  CREATE TABLE IF NOT EXISTS recovery (
+    uid TEXT PRIMARY KEY,
+    code TEXT NOT NULL UNIQUE,
+    token TEXT NOT NULL
+  );
 `);
 const q = {
   allPredictions: db.prepare('SELECT * FROM predictions ORDER BY created_at'),
@@ -86,7 +93,24 @@ const q = {
   remove: db.prepare('DELETE FROM predictions WHERE id = ?'),
   getMeta: db.prepare('SELECT value FROM meta WHERE key = ?'),
   setMeta: db.prepare('INSERT INTO meta (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value'),
+  codeByUid: db.prepare('SELECT code FROM recovery WHERE uid = ?'),
+  byCode: db.prepare('SELECT token FROM recovery WHERE code = ?'),
+  insertCode: db.prepare('INSERT OR IGNORE INTO recovery (uid, code, token) VALUES (?, ?, ?)'),
 };
+
+// Codes lisibles à l'oral : pas de 0/O ni de 1/I/L
+const CODE_ALPHABET = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
+const normalizeCode = (c) => String(c || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
+function ensureCode(me) {
+  const existing = q.codeByUid.get(me.uid);
+  if (existing) return existing.code;
+  for (;;) {
+    const bytes = crypto.randomBytes(8);
+    const code = [...bytes].map((b) => CODE_ALPHABET[b % CODE_ALPHABET.length]).join('');
+    if (q.insertCode.run(me.uid, code, me.token).changes) return code;
+  }
+}
+const formatCode = (c) => c.slice(0, 4) + '-' + c.slice(4);
 
 // Secret de signature des cookies, créé une fois et conservé avec la base
 let SECRET = q.getMeta.get('secret')?.value;
@@ -138,7 +162,10 @@ function identify(req, res) {
     isAdmin = Number(exp) > Date.now() && !!sig && sig.length === expected.length &&
       crypto.timingSafeEqual(Buffer.from(sig), Buffer.from(expected));
   }
-  return { uid, isAdmin, email: isAdmin ? ADMIN_EMAIL : null };
+  const me = { uid, isAdmin, email: isAdmin ? ADMIN_EMAIL : null };
+  // Le jeton n'est jamais renvoyé au navigateur (propriété non sérialisée)
+  Object.defineProperty(me, 'token', { value: token });
+  return me;
 }
 function appendCookie(res, value) {
   const prev = res.getHeader('Set-Cookie') || [];
@@ -152,15 +179,16 @@ function clientIp(req) {
   const xff = String(req.headers['x-forwarded-for'] || '').split(',').map((s) => s.trim()).filter(Boolean);
   return xff[xff.length - 1] || req.socket.remoteAddress || '?';
 }
-function tooManyAttempts(ip) {
+function tooManyAttempts(ip, kind = 'login', max = 5) {
+  const key = kind + ':' + ip;
   const now = Date.now();
-  const a = attempts.get(ip);
+  const a = attempts.get(key);
   if (!a || a.reset < now) {
-    attempts.set(ip, { n: 1, reset: now + 15 * 60 * 1000 });
+    attempts.set(key, { n: 1, reset: now + 15 * 60 * 1000 });
     return false;
   }
   a.n += 1;
-  return a.n > 5;
+  return a.n > max;
 }
 
 /* ---------------- Validation (comme firestore.rules) ---------------- */
@@ -205,8 +233,9 @@ function snapshot(me) {
       const d = JSON.parse(r.data);
       return { id: r.id, uid: r.uid, name: d.name, avatar: d.avatar, text: r.message, createdAt: r.created_at };
     });
+  const code = mine.length ? q.codeByUid.get(me.uid)?.code : null;
   return {
-    me,
+    me: Object.assign({}, me, { code: code ? formatCode(code) : null }),
     state,
     voters: [...new Set(preds.map((p) => p.uid))],
     mine,
@@ -271,8 +300,9 @@ async function api(req, res, url) {
     if (q.countByUid.get(me.uid).n >= MAX_PREDICTIONS_PER_PLAYER) return fail(res, 429, 'Trop de pronostics depuis cet appareil');
     const id = 'p' + Date.now().toString(36) + crypto.randomBytes(4).toString('hex');
     q.insert.run(id, me.uid, JSON.stringify(p), message || null, Date.now());
+    const code = ensureCode(me);
     version++;
-    return send(res, 201, { id });
+    return send(res, 201, { id, code: formatCode(code) });
   }
 
   if (req.method === 'DELETE' && url.pathname.startsWith('/api/predictions/')) {
@@ -298,9 +328,19 @@ async function api(req, res, url) {
       String(email || '').trim().toLowerCase() === ADMIN_EMAIL &&
       checkPassword(password || '', ADMIN_PASSWORD_HASH);
     if (!ok) return fail(res, 401, 'Identifiants incorrects');
-    attempts.delete(clientIp(req));
+    attempts.delete('login:' + clientIp(req));
     const exp = Date.now() + ADMIN_SESSION_MS;
     appendCookie(res, cookie('ocean_admin', `${exp}.${hmac('admin:' + ADMIN_EMAIL + ':' + exp)}`, ADMIN_SESSION_MS / 1000));
+    return send(res, 200, { ok: true });
+  }
+
+  if (route === 'POST /api/recover') {
+    if (tooManyAttempts(clientIp(req), 'recover', 10)) return fail(res, 429, 'Trop de tentatives, réessaie dans 15 minutes');
+    const { code } = await readJson(req);
+    const row = q.byCode.get(normalizeCode(code));
+    if (!row) return fail(res, 404, 'Code inconnu');
+    // Remplace (et non ajoute) le cookie d'identité éventuellement créé par identify()
+    res.setHeader('Set-Cookie', [cookie('ocean_id', row.token, 2 * 365 * 24 * 3600)]);
     return send(res, 200, { ok: true });
   }
 
@@ -325,7 +365,11 @@ const TYPES = {
 };
 function serveStatic(req, res, url) {
   let p = decodeURIComponent(url.pathname);
-  if (p === '/') p = '/index.html';
+  if (p === '/' || p === '/stats') p = '/index.html';
+  if (p === '/stats/') {
+    res.writeHead(301, { Location: '/stats' });
+    return res.end();
+  }
   // Seuls index.html, css/ et js/ sont publics (pas server/, .git…)
   if (!(p === '/index.html' || p.startsWith('/css/') || p.startsWith('/js/'))) return notFound(res);
   const file = path.join(PUBLIC_DIR, path.normalize(p));

@@ -37,6 +37,8 @@
   let answers = []; // version anonyme (après avoir joué)
   let allPreds = []; // version complète (capitaine, ou tout le monde après la naissance)
   let myPreds = []; // mes propres pronostics
+  // Page annexe /stats : uniquement le tableau de bord du capitaine
+  const STATS_PAGE = /^\/stats\/?$/.test(location.pathname);
   let messages = []; // capitaine : tous ; joueur : les siens
   let voters = []; // appareils ayant joué
 
@@ -788,6 +790,87 @@
     </table></div>`;
   }
 
+  /* ---------------- Ma bouteille & code de récupération ---------------- */
+  function renderMyBottle() {
+    const box = $("#myBottle");
+    const code = store.myCode ? store.myCode() : null;
+    $("#recoverBox").hidden = !store.recover || auth.isAdmin;
+    if (!myPreds.length) {
+      box.hidden = true;
+      return;
+    }
+    box.hidden = false;
+    const row = (k, v) => `<li><span>${k}</span><b>${esc(v)}</b></li>`;
+    const cards = myPreds
+      .slice()
+      .sort((a, b) => a.createdAt - b.createdAt)
+      .map((p) => `
+        <div class="my-bottle__card">
+          <p class="my-bottle__who">${esc(p.avatar)} ${esc(p.name)}</p>
+          <ul>
+            ${row("📅 Date", fmtDay(p.date, { year: "numeric" }))}
+            ${row("🕰️ Heure", fmtTime(p.time))}
+            ${row("⚖️ Poids", fmtWeight(p.weight))}
+            ${row("📏 Taille", fmtHeight(p.height))}
+            ${row("💇 Cheveux", labelOf(HAIR, p.hair))}
+            ${row("🪞 Ressemble à", labelOf(LOOKS, p.looks))}
+            ${row("👨 Papa sera", labelOf(WHERE, p.papaWhere))}
+            ${row("👩 Maman sera", labelOf(WHERE, p.mamanWhere))}
+            ${p.babyName ? row("✨ Prénom", p.babyName) : ""}
+          </ul>
+        </div>`)
+      .join("");
+    box.innerHTML = `
+      <h3 class="zone__subtitle">📜 ${myPreds.length > 1 ? "Tes bouteilles" : "Ta bouteille"}</h3>
+      ${code ? `
+        <div class="my-bottle__code">
+          <p>🔑 Ton code de bouteille : <b id="myCode">${esc(code)}</b>
+            <button type="button" class="chip chip--small" id="copyCode">📋 Copier</button></p>
+          <small>Note-le bien ! Il te permet de retrouver tes réponses sur un autre téléphone ou ordinateur.</small>
+        </div>` : ""}
+      <div class="my-bottle__cards">${cards}</div>`;
+    const copy = $("#copyCode");
+    if (copy)
+      copy.addEventListener("click", async () => {
+        try {
+          await navigator.clipboard.writeText(code);
+          toast("📋 Code copié : " + code);
+        } catch (e) {
+          toast("🔑 Ton code : " + code, 6000);
+        }
+      });
+  }
+
+  function initRecover() {
+    $("#recoverForm").addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const err = $("#recoverError");
+      const code = e.target.code.value.trim();
+      err.textContent = "";
+      if (!code) return;
+      const clean = (c) => String(c).toUpperCase().replace(/[^A-Z0-9]/g, "");
+      const current = store.myCode ? store.myCode() : null;
+      if (current && clean(current) !== clean(code) &&
+          !confirm("Cet appareil a déjà sa propre bouteille (code " + current + "). Note-le avant de continuer : veux-tu vraiment passer à l'autre ?")) return;
+      try {
+        await store.recover(code);
+        e.target.reset();
+        $("#recoverBox").open = false;
+        toast("🍾 Bouteille retrouvée ! Bon retour à bord 💙", 4000);
+        setTimeout(() => $("#myBottle").scrollIntoView({ behavior: "smooth", block: "center" }), 300);
+      } catch (ex) {
+        err.textContent = ex.code === "http-404" ? "Ce code ne correspond à aucune bouteille 🧐 Vérifie les lettres et les chiffres." : ex.message;
+      }
+    });
+  }
+
+  function initStatsPage() {
+    if (!STATS_PAGE) return;
+    document.body.classList.add("is-stats-page");
+    document.title = "Statistiques · " + document.title;
+    $("#statsBar").hidden = false;
+  }
+
   function renderFormState() {
     const open = votingOpen();
     $("#predictionForm").hidden = !open;
@@ -858,8 +941,9 @@
 
   function renderDashboard() {
     const sec = $("#dashboard");
-    sec.hidden = !auth.isAdmin;
-    if (!auth.isAdmin) return;
+    $("#statsGate").hidden = !STATS_PAGE || auth.isAdmin;
+    sec.hidden = !auth.isAdmin || !STATS_PAGE;
+    if (sec.hidden) return;
     const n = allPreds.length;
     const status = state.born ? "🎉 Naissance annoncée" : !state.open ? "⚓ Votes fermés" : deadlinePassed() ? "⏳ Date limite passée" : state.deadline ? "🟢 Ouverts · encore " + fmtLeft(state.deadline - Date.now()) : "🟢 Ouverts, sans date limite";
     $("#dashKpis").innerHTML = `
@@ -909,6 +993,7 @@
 
   function renderAll() {
     renderFormState();
+    renderMyBottle();
     renderTreasure();
     renderStats();
     renderMyMessages();
@@ -976,12 +1061,14 @@
       modal.showModal();
     });
     if (location.hash === "#capitaine") setTimeout(() => $("#adminOpen").click(), 300);
+    $("#statsLogin").addEventListener("click", () => $("#adminOpen").click());
     // Liens vers les statistiques : on ferme la fenêtre puis on descend à la section
     modal.querySelectorAll("[data-close-admin]").forEach((link) =>
       link.addEventListener("click", (e) => {
+        if (STATS_PAGE) return; // la page principale s'ouvre normalement
         e.preventDefault();
         modal.close();
-        const target = $(link.getAttribute("href"));
+        const target = $(link.getAttribute("href").replace(/^\//, ""));
         if (target) setTimeout(() => target.scrollIntoView({ behavior: "smooth", block: "start" }), 50);
       })
     );
@@ -1184,7 +1271,9 @@
   }
 
   initHeader();
+  initStatsPage();
   initForm();
+  initRecover();
   initBubbles();
   initSwimmers();
   initDepth();

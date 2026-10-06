@@ -378,6 +378,13 @@
       async logout() {
         await write("POST", "/logout", {});
       },
+      // Code de bouteille : retrouver ses pronostics sur un autre appareil
+      myCode() {
+        return (me && me.code) || null;
+      },
+      async recover(code) {
+        await write("POST", "/recover", { code });
+      },
     };
   }
 

@@ -68,7 +68,22 @@
     </svg>
   </header>
 
+  <!-- Barre de la page /stats -->
+  <nav class="stats-bar" id="statsBar" hidden>
+    <a class="btn btn--ghost-dark" href="/">← Retour au site</a>
+    <span class="stats-bar__title">🧭 Statistiques du capitaine</span>
+  </nav>
+
   <main>
+    <!-- ============ PAGE /stats sans être connecté ============ -->
+    <section class="zone zone--captain" id="statsGate" hidden>
+      <div class="container">
+        <h2 class="zone__title">🔒 Réservé au capitaine</h2>
+        <p class="zone__intro">Connecte-toi pour voir tous les pronostics et les statistiques détaillées.</p>
+        <button type="button" class="btn btn--coral" id="statsLogin">⚓ Se connecter</button>
+      </div>
+    </section>
+
     <!-- ============ TABLEAU DE BORD DU CAPITAINE (visible seulement par les parents) ============ -->
     <section class="zone zone--captain" id="dashboard" hidden>
       <div class="container">
@@ -117,6 +132,17 @@
         <p class="deadline-note" id="deadlineNote" hidden></p>
 
         <div class="closed-note" id="closedNote" hidden></div>
+
+        <!-- Ma bouteille : mes réponses + mon code pour les retrouver ailleurs -->
+        <div class="my-bottle" id="myBottle" hidden></div>
+        <details class="recover" id="recoverBox" hidden>
+          <summary>🔑 Tu as déjà joué sur un autre appareil&nbsp;? Retrouve ta bouteille</summary>
+          <form id="recoverForm" class="recover__form">
+            <input type="text" name="code" placeholder="Ex. K7QM-3XPA" autocomplete="off" autocapitalize="characters" spellcheck="false" maxlength="12" aria-label="Code de bouteille" required />
+            <button type="submit" class="btn btn--coral">Retrouver</button>
+          </form>
+          <p class="form__error" id="recoverError" role="alert"></p>
+        </details>
 
         <form class="parchment" id="predictionForm" novalidate>
           <fieldset class="field field--wide">
@@ -245,8 +271,8 @@
       <p class="admin-who" id="adminWho"></p>
 
       <div class="admin-actions admin-links">
-        <a class="btn btn--coral" href="#dashboard" data-close-admin>🧭 Statistiques détaillées</a>
-        <a class="btn btn--ghost-dark" href="#courants" data-close-admin>🌊 Statistiques anonymes</a>
+        <a class="btn btn--coral" href="/stats" id="statsLink">🧭 Statistiques détaillées</a>
+        <a class="btn btn--ghost-dark" href="/#courants" data-close-admin>🌊 Statistiques anonymes</a>
       </div>
 
       <label class="toggle">
