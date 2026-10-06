@@ -543,7 +543,7 @@
       btn.disabled = true;
       btn.textContent = "🌊 La bouteille vogue…";
       try {
-        await store.addPrediction(p, message);
+        const newId = await store.addPrediction(p, message);
         launchBottle(btn);
         form.reset();
         calendar.reset();
@@ -556,7 +556,7 @@
         toast("🍾 Bouteille lancée ! Merci " + p.name + " 💙 Les courants te sont dévoilés…", 4500);
         anotherBottle = false;
         renderAll();
-        const code = store.myCode ? store.myCode() : null;
+        const code = (myPreds.find((x) => x.id === newId) || {}).code;
         // Le code s'affiche dans une fenêtre pour qu'on ne le rate pas ;
         // on descend aux courants une fois qu'elle est fermée
         if (code) setTimeout(() => showCodeModal(code), 1200);
@@ -816,7 +816,6 @@
   /* ---------------- Ma bouteille & code de récupération ---------------- */
   function renderMyBottle() {
     const box = $("#myBottle");
-    const code = store.myCode ? store.myCode() : null;
     if (!myPreds.length) {
       box.hidden = true;
       return;
@@ -829,6 +828,9 @@
       .map((p) => `
         <div class="my-bottle__card">
           <p class="my-bottle__who">${esc(p.avatar)} ${esc(p.name)}</p>
+          ${p.code ? `
+            <p class="my-bottle__code">🔑 Code : <b>${esc(p.code)}</b>
+              <button type="button" class="chip chip--small" data-copy="${esc(p.code)}">📋 Copier</button></p>` : ""}
           <ul>
             ${row("📅 Date", fmtDay(p.date, { year: "numeric" }))}
             ${row("🕰️ Heure", fmtTime(p.time))}
@@ -844,12 +846,7 @@
       .join("");
     box.innerHTML = `
       <h3 class="zone__subtitle">📜 ${myPreds.length > 1 ? "Tes bouteilles" : "Ta bouteille"}</h3>
-      ${code ? `
-        <div class="my-bottle__code">
-          <p>🔑 Ton code de bouteille : <b id="myCode">${esc(code)}</b>
-            <button type="button" class="chip chip--small" id="copyCode">📋 Copier</button></p>
-          <small>Note-le bien ! Il te permet de retrouver tes réponses sur un autre téléphone ou ordinateur.</small>
-        </div>` : ""}
+      <p class="my-bottle__hint">🔑 Chaque bouteille a son propre code : note-le bien, il permet de retrouver ses réponses sur un autre téléphone ou ordinateur.</p>
       <div class="my-bottle__cards">${cards}</div>
       ${votingOpen() ? `
         <div class="my-bottle__again">
@@ -864,16 +861,17 @@
         renderAll();
         if (anotherBottle) setTimeout(() => $("#predictionForm").scrollIntoView({ behavior: "smooth", block: "start" }), 50);
       });
-    const copy = $("#copyCode");
-    if (copy)
-      copy.addEventListener("click", async () => {
+    box.querySelectorAll("[data-copy]").forEach((b) =>
+      b.addEventListener("click", async () => {
+        const code = b.dataset.copy;
         try {
           await navigator.clipboard.writeText(code);
           toast("📋 Code copié : " + code);
         } catch (e) {
-          toast("🔑 Ton code : " + code, 6000);
+          toast("🔑 Code : " + code, 6000);
         }
-      });
+      })
+    );
   }
 
   function initRecover() {
@@ -883,10 +881,6 @@
       const code = e.target.code.value.trim();
       err.textContent = "";
       if (!code) return;
-      const clean = (c) => String(c).toUpperCase().replace(/[^A-Z0-9]/g, "");
-      const current = store.myCode ? store.myCode() : null;
-      if (current && clean(current) !== clean(code) &&
-          !confirm("Cet appareil a déjà sa propre bouteille (code " + current + "). Note-le avant de continuer : veux-tu vraiment passer à l'autre ?")) return;
       try {
         await store.recover(code);
         e.target.reset();
@@ -925,7 +919,7 @@
     const due = isNaN(parseDay(cfg.dueDate)) ? "" : fmtDay(cfg.dueDate, { year: "numeric" });
     const dueLine = due ? `🎯 Le terme est prévu le <b>${esc(due)}</b>. Sera-t-elle pile à l'heure, en avance ou en retard&nbsp;? ` : "";
     $("#formIntro").innerHTML = anotherBottle && hasVoted()
-      ? dueLine + "🍾 Nouvelle bouteille pour un autre moussaillon de cet appareil. Elle aura le même code de bouteille que la première."
+      ? dueLine + "🍾 Nouvelle bouteille pour un autre moussaillon de cet appareil. Elle aura son propre code de bouteille."
       : voted
       ? dueLine + "Ta bouteille est à la mer 💙 Voici ce que tu as joué. Les courants de l'équipage sont dévoilés juste en dessous&nbsp;!"
       : dueLine + "Remplis ton parchemin, glisse-le dans la bouteille, et à la naissance on découvrira qui avait vu juste. Pas de points, pas de pression : juste pour le plaisir&nbsp;! Les courants de l'équipage (les tendances anonymes) se dévoilent une fois que tu as joué.";

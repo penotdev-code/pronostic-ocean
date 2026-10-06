@@ -78,12 +78,23 @@ db.exec(`
     created_at INTEGER NOT NULL
   );
   CREATE TABLE IF NOT EXISTS meta (key TEXT PRIMARY KEY, value TEXT NOT NULL);
-  -- Code de bouteille : permet de retrouver son identité (et donc ses
-  -- pronostics) sur un autre appareil
+  -- Ancienne version (un code par appareil) : lue seulement pour la migration
   CREATE TABLE IF NOT EXISTS recovery (
     uid TEXT PRIMARY KEY,
     code TEXT NOT NULL UNIQUE,
     token TEXT NOT NULL
+  );
+  -- Un code de bouteille par joueur (= par pronostic)
+  CREATE TABLE IF NOT EXISTS codes (
+    prediction_id TEXT PRIMARY KEY,
+    code TEXT NOT NULL UNIQUE
+  );
+  -- Quels pronostics chaque appareil peut voir : ceux qu'il a lancés
+  -- et ceux retrouvés avec un code
+  CREATE TABLE IF NOT EXISTS links (
+    uid TEXT NOT NULL,
+    prediction_id TEXT NOT NULL,
+    PRIMARY KEY (uid, prediction_id)
   );
 `);
 const q = {
@@ -91,27 +102,44 @@ const q = {
   countByUid: db.prepare('SELECT COUNT(*) AS n FROM predictions WHERE uid = ?'),
   insert: db.prepare('INSERT INTO predictions (id, uid, data, message, created_at) VALUES (?, ?, ?, ?, ?)'),
   remove: db.prepare('DELETE FROM predictions WHERE id = ?'),
+  removeCode: db.prepare('DELETE FROM codes WHERE prediction_id = ?'),
+  removeLinks: db.prepare('DELETE FROM links WHERE prediction_id = ?'),
   getMeta: db.prepare('SELECT value FROM meta WHERE key = ?'),
   setMeta: db.prepare('INSERT INTO meta (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value'),
-  codeByUid: db.prepare('SELECT code FROM recovery WHERE uid = ?'),
-  allCodes: db.prepare('SELECT uid, code FROM recovery'),
-  byCode: db.prepare('SELECT token FROM recovery WHERE code = ?'),
-  insertCode: db.prepare('INSERT OR IGNORE INTO recovery (uid, code, token) VALUES (?, ?, ?)'),
+  oldCodeByUid: db.prepare('SELECT code FROM recovery WHERE uid = ?'),
+  allCodes: db.prepare('SELECT prediction_id, code FROM codes'),
+  byCode: db.prepare('SELECT prediction_id FROM codes WHERE code = ?'),
+  insertCode: db.prepare('INSERT OR IGNORE INTO codes (prediction_id, code) VALUES (?, ?)'),
+  linksByUid: db.prepare('SELECT prediction_id FROM links WHERE uid = ?'),
+  link: db.prepare('INSERT OR IGNORE INTO links (uid, prediction_id) VALUES (?, ?)'),
 };
 
 // Codes lisibles à l'oral : pas de 0/O ni de 1/I/L
 const CODE_ALPHABET = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
 const normalizeCode = (c) => String(c || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
-function ensureCode(me) {
-  const existing = q.codeByUid.get(me.uid);
-  if (existing) return existing.code;
+function newCode(predictionId) {
   for (;;) {
     const bytes = crypto.randomBytes(8);
     const code = [...bytes].map((b) => CODE_ALPHABET[b % CODE_ALPHABET.length]).join('');
-    if (q.insertCode.run(me.uid, code, me.token).changes) return code;
+    if (q.insertCode.run(predictionId, code).changes) return code;
   }
 }
 const formatCode = (c) => c.slice(0, 4) + '-' + c.slice(4);
+
+// Migration depuis « un code par appareil » : le 1er pronostic de chaque
+// appareil garde l'ancien code, les suivants reçoivent un nouveau code.
+// Sans effet une fois faite.
+{
+  const codes = new Map(q.allCodes.all().map((r) => [r.prediction_id, r.code]));
+  const used = new Set(codes.values());
+  for (const p of q.allPredictions.all()) {
+    q.link.run(p.uid, p.id);
+    if (codes.has(p.id)) continue;
+    const old = q.oldCodeByUid.get(p.uid)?.code;
+    if (old && !used.has(old) && q.insertCode.run(p.id, old).changes) used.add(old);
+    else used.add(newCode(p.id));
+  }
+}
 
 // Secret de signature des cookies, créé une fois et conservé avec la base
 let SECRET = q.getMeta.get('secret')?.value;
@@ -225,24 +253,25 @@ function validStatePatch(patch) {
 // Capitaine uniquement : le code de bouteille de chaque joueur, pour
 // pouvoir le lui renvoyer s'il l'a perdu
 function withCodes(preds) {
-  const codes = new Map(q.allCodes.all().map((r) => [r.uid, formatCode(r.code)]));
-  return preds.map((p) => Object.assign({}, p, { code: codes.get(p.uid) || '' }));
+  const codes = new Map(q.allCodes.all().map((r) => [r.prediction_id, formatCode(r.code)]));
+  return preds.map((p) => Object.assign({}, p, { code: codes.get(p.id) || '' }));
 }
 function snapshot(me) {
   const state = getState();
   const rows = q.allPredictions.all();
   const preds = rows.map((r) => Object.assign({ id: r.id }, JSON.parse(r.data), { uid: r.uid, createdAt: r.created_at }));
-  const mine = preds.filter((p) => p.uid === me.uid);
+  const mineIds = new Set(q.linksByUid.all(me.uid).map((r) => r.prediction_id));
+  // Ses propres bouteilles, chacune avec son code
+  const mine = withCodes(preds.filter((p) => mineIds.has(p.id)));
   const canSeeAnswers = me.isAdmin || state.born || mine.length > 0;
   const messages = rows
-    .filter((r) => r.message && (me.isAdmin || r.uid === me.uid))
+    .filter((r) => r.message && (me.isAdmin || mineIds.has(r.id)))
     .map((r) => {
       const d = JSON.parse(r.data);
       return { id: r.id, uid: r.uid, name: d.name, avatar: d.avatar, text: r.message, createdAt: r.created_at };
     });
-  const code = mine.length ? q.codeByUid.get(me.uid)?.code : null;
   return {
-    me: Object.assign({}, me, { code: code ? formatCode(code) : null }),
+    me,
     state,
     voters: [...new Set(preds.map((p) => p.uid))],
     mine,
@@ -307,14 +336,18 @@ async function api(req, res, url) {
     if (q.countByUid.get(me.uid).n >= MAX_PREDICTIONS_PER_PLAYER) return fail(res, 429, 'Trop de pronostics depuis cet appareil');
     const id = 'p' + Date.now().toString(36) + crypto.randomBytes(4).toString('hex');
     q.insert.run(id, me.uid, JSON.stringify(p), message || null, Date.now());
-    const code = ensureCode(me);
+    q.link.run(me.uid, id);
+    const code = newCode(id);
     version++;
     return send(res, 201, { id, code: formatCode(code) });
   }
 
   if (req.method === 'DELETE' && url.pathname.startsWith('/api/predictions/')) {
     if (!me.isAdmin) return fail(res, 403, 'Réservé au capitaine');
-    q.remove.run(decodeURIComponent(url.pathname.slice('/api/predictions/'.length)));
+    const id = decodeURIComponent(url.pathname.slice('/api/predictions/'.length));
+    q.remove.run(id);
+    q.removeCode.run(id);
+    q.removeLinks.run(id);
     version++;
     return send(res, 200, { ok: true });
   }
@@ -346,8 +379,9 @@ async function api(req, res, url) {
     const { code } = await readJson(req);
     const row = q.byCode.get(normalizeCode(code));
     if (!row) return fail(res, 404, 'Code inconnu');
-    // Remplace (et non ajoute) le cookie d'identité éventuellement créé par identify()
-    res.setHeader('Set-Cookie', [cookie('ocean_id', row.token, 2 * 365 * 24 * 3600)]);
+    // L'appareil garde son identité et gagne l'accès à cette bouteille
+    q.link.run(me.uid, row.prediction_id);
+    version++;
     return send(res, 200, { ok: true });
   }
 
