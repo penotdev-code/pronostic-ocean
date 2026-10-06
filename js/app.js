@@ -896,6 +896,7 @@
   let dashSort = { key: "createdAt", dir: -1 };
   const DASH_COLS = [
     { key: "name", label: "Nom", get: (p) => p.name, show: (p) => `${esc(p.avatar)} ${esc(p.name)}` },
+    { key: "code", label: "Code", get: (p) => p.code || "", show: (p) => (p.code ? `<button type="button" class="dash-code" data-code="${esc(p.code)}" title="Copier le code">${esc(p.code)}</button>` : "–") },
     { key: "date", label: "Date", get: (p) => p.date, show: (p) => esc(fmtDay(p.date, { weekday: "short" })) },
     { key: "time", label: "Heure", get: (p) => p.time, show: (p) => esc(fmtTime(p.time)) },
     { key: "weight", label: "Poids", get: (p) => p.weight, show: (p) => esc(fmtWeight(p.weight)) },
@@ -926,12 +927,25 @@
       }
     });
     $("#dashCsv").addEventListener("click", exportCsv);
+    // Clic sur un code de bouteille : copié pour le renvoyer au joueur
+    $("#dashTable").addEventListener("click", async (e) => {
+      const b = e.target.closest(".dash-code");
+      if (!b) return;
+      try {
+        await navigator.clipboard.writeText(b.dataset.code);
+        toast("📋 Code copié : " + b.dataset.code);
+      } catch (ex) {
+        toast("🔑 Code : " + b.dataset.code, 6000);
+      }
+    });
   }
 
   function dashRows() {
     const q = norm($("#dashSearch").value);
     let list = allPreds.slice();
-    if (q) list = list.filter((p) => norm(p.name).includes(q));
+    // norm() ne garde que les lettres : pour les codes, on garde aussi les chiffres
+    const qc = $("#dashSearch").value.toUpperCase().replace(/[^A-Z0-9]/g, "");
+    if (q || qc) list = list.filter((p) => (q && norm(p.name).includes(q)) || (qc && String(p.code || "").replace(/-/g, "").includes(qc)));
     const col = DASH_COLS.find((c) => c.key === dashSort.key) || DASH_COLS[0];
     return list.sort((a, b) => {
       const x = col.get(a), y = col.get(b);

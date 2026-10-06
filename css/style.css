@@ -624,3 +624,9 @@ input[type="range"] { flex: 1; accent-color: var(--coral); height: 28px; }
 .is-stats-page .surface,
 .is-stats-page .depth,
 .is-stats-page main > section:not(#dashboard):not(#statsGate) { display: none !important; }
+
+.dash-code {
+  font: inherit; font-family: ui-monospace, monospace; letter-spacing: .06em; white-space: nowrap;
+  background: rgba(255,255,255,.15); color: inherit; border: 1px dashed currentColor;
+  border-radius: 8px; padding: 2px 6px; cursor: copy;
+}

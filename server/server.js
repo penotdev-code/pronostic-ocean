@@ -94,6 +94,7 @@ const q = {
   getMeta: db.prepare('SELECT value FROM meta WHERE key = ?'),
   setMeta: db.prepare('INSERT INTO meta (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value'),
   codeByUid: db.prepare('SELECT code FROM recovery WHERE uid = ?'),
+  allCodes: db.prepare('SELECT uid, code FROM recovery'),
   byCode: db.prepare('SELECT token FROM recovery WHERE code = ?'),
   insertCode: db.prepare('INSERT OR IGNORE INTO recovery (uid, code, token) VALUES (?, ?, ?)'),
 };
@@ -221,6 +222,12 @@ function validStatePatch(patch) {
 }
 
 /* ---------------- Ce que chacun a le droit de voir ---------------- */
+// Capitaine uniquement : le code de bouteille de chaque joueur, pour
+// pouvoir le lui renvoyer s'il l'a perdu
+function withCodes(preds) {
+  const codes = new Map(q.allCodes.all().map((r) => [r.uid, formatCode(r.code)]));
+  return preds.map((p) => Object.assign({}, p, { code: codes.get(p.uid) || '' }));
+}
 function snapshot(me) {
   const state = getState();
   const rows = q.allPredictions.all();
@@ -241,7 +248,7 @@ function snapshot(me) {
     mine,
     messages,
     answers: canSeeAnswers ? preds.map((p) => Object.assign({ id: p.id }, pick(p, ANSWER_FIELDS))) : undefined,
-    predictions: me.isAdmin || state.born ? preds : undefined,
+    predictions: me.isAdmin ? withCodes(preds) : state.born ? preds : undefined,
   };
 }
 
