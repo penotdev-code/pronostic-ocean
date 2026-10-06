@@ -630,3 +630,13 @@ input[type="range"] { flex: 1; accent-color: var(--coral); height: 28px; }
   background: rgba(255,255,255,.15); color: inherit; border: 1px dashed currentColor;
   border-radius: 8px; padding: 2px 6px; cursor: copy;
 }
+
+/* ---------- Fenêtre du code de bouteille ---------- */
+.modal--code { width: min(440px, calc(100% - 24px)); text-align: center; }
+.code-modal__code {
+  font-family: ui-monospace, monospace; font-size: 2rem; font-weight: 800; letter-spacing: .15em;
+  color: var(--sea-4); background: #fff; border: 3px dashed #ff7b7b; border-radius: 16px;
+  padding: 12px 8px; margin: 14px 0; user-select: all;
+}
+.code-modal__hint { font-size: .92rem; opacity: .85; }
+.code-modal__actions { justify-content: center; margin-top: 16px; }

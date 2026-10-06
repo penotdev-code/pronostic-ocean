@@ -253,6 +253,18 @@
   </footer>
 
   <!-- ============ ESPACE CAPITAINE ============ -->
+  <!-- ============ CODE DE BOUTEILLE (après avoir joué) ============ -->
+  <dialog class="modal modal--code" id="codeModal" aria-labelledby="codeModalTitle">
+    <h2 id="codeModalTitle">🔑 Ton code de bouteille</h2>
+    <p>Ta bouteille est à la mer&nbsp;! Garde précieusement ce code&nbsp;:</p>
+    <p class="code-modal__code" id="codeModalCode"></p>
+    <p class="code-modal__hint">Il te permettra de retrouver tes réponses sur un autre téléphone ou ordinateur. Fais une capture d'écran ou copie-le dans tes notes 📸</p>
+    <form method="dialog" class="admin-actions code-modal__actions">
+      <button type="button" class="btn btn--ghost-dark" id="codeModalCopy">📋 Copier</button>
+      <button type="submit" class="btn btn--coral">✅ C'est noté&nbsp;!</button>
+    </form>
+  </dialog>
+
   <dialog class="modal" id="adminModal">
     <form method="dialog" class="modal__close-form"><button class="modal__close" aria-label="Fermer">✕</button></form>
     <h2>⚓ Espace capitaine</h2>

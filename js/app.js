@@ -553,7 +553,11 @@
         });
         upd();
         toast("🍾 Bouteille lancée ! Merci " + p.name + " 💙 Les courants te sont dévoilés…", 4500);
-        setTimeout(() => $("#courants").scrollIntoView({ behavior: "smooth" }), 1300);
+        const code = store.myCode ? store.myCode() : null;
+        // Le code s'affiche dans une fenêtre pour qu'on ne le rate pas ;
+        // on descend aux courants une fois qu'elle est fermée
+        if (code) setTimeout(() => showCodeModal(code), 1200);
+        else setTimeout(() => $("#courants").scrollIntoView({ behavior: "smooth" }), 1300);
       } catch (ex) {
         console.error(ex);
         err.textContent = "Oups, la bouteille a coulé… réessaie dans un instant. (" + (ex.message || ex) + ")";
@@ -563,6 +567,22 @@
       }
     });
   }
+
+  function showCodeModal(code) {
+    const modal = $("#codeModal");
+    $("#codeModalCode").textContent = code;
+    modal.addEventListener("close", () => setTimeout(() => $("#courants").scrollIntoView({ behavior: "smooth" }), 150), { once: true });
+    modal.showModal();
+  }
+  $("#codeModalCopy").addEventListener("click", async () => {
+    const code = $("#codeModalCode").textContent;
+    try {
+      await navigator.clipboard.writeText(code);
+      toast("📋 Code copié : " + code);
+    } catch (e) {
+      toast("🔑 Ton code : " + code, 6000);
+    }
+  });
 
   function launchBottle(from) {
     const r = from.getBoundingClientRect();
