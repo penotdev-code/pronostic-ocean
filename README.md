@@ -30,42 +30,17 @@ Il n'y a ni points ni classement : on joue pour le plaisir. À la naissance, le 
 
 Tout se règle dans **`js/config.js`** : les noms des parents, le surnom de bébé, la **date du terme**, l'activation du jeu « devine le prénom », l'email du capitaine.
 
-## 🚀 Mettre en ligne (gratuit)
+## 🚀 Hébergement
 
-Sans configuration, le site fonctionne en **mode démo** : chaque visiteur ne voit que ses propres pronostics. Pour que tout le monde partage les mêmes données, on utilise **Firebase** (gratuit pour cet usage).
+Le site tourne sur le VPS (https://petite-sirene.paulpenot.fr) : un petit serveur Node sans dépendance (`server/server.js`) sert les pages et stocke les pronostics dans une base SQLite, avec les mêmes règles de confidentialité que `firestore.rules`.
 
-### 1. Créer la base de données
+- **Déploiement automatique** : chaque push sur la branche `claude/ocean-baby-prediction-site-izm4mi` déclenche `.github/workflows/deploy.yml`, qui reconstruit le site sur le VPS (secret `VPS_SSH_KEY`).
+- **Capitaine** : son email et l'empreinte de son mot de passe sont dans le `.env` du serveur (`ADMIN_EMAIL`, `ADMIN_PASSWORD_HASH`), jamais dans le dépôt. Pour générer une empreinte : `echo "mot de passe" | node server/server.js hash-password`.
+- **Codes de bouteille** : chaque pronostic reçoit un code unique qui permet au joueur de retrouver ses réponses sur un autre appareil ; le capitaine les voit dans `/stats`.
+- **Statistiques détaillées du capitaine** : https://petite-sirene.paulpenot.fr/stats
+- **Sauvegardes** : la base est dans le volume Docker `petite-sirene_data`, sauvegardé chaque nuit sur le VPS.
 
-1. Va sur <https://console.firebase.google.com> → **Ajouter un projet** (Google Analytics inutile).
-2. Menu **Build › Firestore Database** → **Créer une base de données** → mode production, région `europe-west`.
-3. Onglet **Règles** : colle le contenu du fichier [`firestore.rules`](firestore.rules) puis **Publier**.
-   (Si l'email du capitaine n'est pas `penot.dev@gmail.com`, change-le dans ce fichier.)
-4. Menu **Build › Authentication** → **Commencer** → onglet **Mode de connexion** :
-   - active **Anonyme** (les invités n'ont pas de compte à créer : c'est ce qui permet de savoir qui a déjà joué) ;
-   - active **Adresse e-mail/Mot de passe**, puis onglet **Utilisateurs** → **Ajouter un utilisateur** avec l'email du capitaine et un mot de passe.
-5. ⚙️ **Paramètres du projet** → **Vos applications** → icône **Web `</>`** → enregistre l'appli,
-   puis copie l'objet `firebaseConfig` dans la partie `firebase` de `js/config.js`.
-
-> Les clés Firebase d'une appli web ne sont pas secrètes : c'est normal qu'elles soient visibles. La sécurité est assurée par les règles Firestore (voir « Qui voit quoi » plus haut).
-
-### 2. Héberger le site
-
-**Option A — GitHub Pages** (le workflow est déjà prêt dans `.github/workflows/pages.yml`)
-1. Fusionne cette branche dans `main`.
-2. Sur GitHub : **Settings › Pages › Source : GitHub Actions**.
-3. Le site sera publié sur `https://<ton-compte>.github.io/pronostic-ocean/`.
-4. Dans Firebase › Authentication › **Paramètres › Domaines autorisés**, ajoute `<ton-compte>.github.io`.
-
-> GitHub Pages sur un dépôt privé nécessite un compte payant. Sinon, utilise l'option B.
-
-**Option B — Firebase Hosting**
-```bash
-npm install -g firebase-tools
-firebase login
-firebase use --add        # choisis ton projet
-firebase deploy           # publie le site + les règles Firestore
-```
-Le site sera sur `https://<ton-projet>.web.app`.
+> Firebase reste possible (prioritaire si `firebase` est rempli dans `js/config.js`), mais n'est plus utilisé.
 
 ## ⚓ Le jour J
 
@@ -77,9 +52,11 @@ Tout en bas de la page, clique sur l'ancre **⚓** (ou ajoute `#capitaine` à l'
 
 ## 🧪 Tester en local
 
+Avec Node ≥ 22.13 (pour `node:sqlite`) :
+
 ```bash
-python3 -m http.server 8000
-# puis ouvre http://localhost:8000
+node server/server.js
+# puis ouvre http://localhost:3000
 ```
 
-En mode démo, n'importe quel email et mot de passe ouvrent l'espace capitaine ⚓, pour pouvoir tout essayer.
+Sans Node, en mode démo : mettre `api: ""` dans `js/config.js` puis `python3 -m http.server 8000`.
