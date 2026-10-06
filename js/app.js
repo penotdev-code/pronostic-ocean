@@ -347,10 +347,9 @@
       note.hidden = true;
       return;
     }
-    pill.hidden = note.hidden = false;
+    pill.hidden = false;
+    note.hidden = true; // la date limite n'est rappelée que dans l'en-tête
     pill.textContent = "⏳ Votes ouverts jusqu'au " + fmtDateTime(state.deadline) + " · encore " + fmtLeft(left);
-    note.textContent = "⏳ Plus que " + fmtLeft(left) + " pour jeter ta bouteille (fin des votes le " + fmtDateTime(state.deadline) + ").";
-    note.classList.toggle("is-urgent", left < DAY);
   }
 
   /* ---------------- Sélecteur de date ---------------- */
@@ -936,14 +935,15 @@
     if (state.born) note.textContent = "⚓ Elle est arrivée ! Les pronostics sont fermés. Merci à tous les moussaillons.";
     else if (!state.open) note.textContent = "⚓ Les pronostics sont fermés : la marée est passée ! Merci à tous les moussaillons.";
     else if (deadlinePassed()) note.textContent = "⏳ Les votes sont clos depuis le " + fmtDateTime(state.deadline) + ". Rendez-vous à la naissance pour les résultats !";
-    // La date du terme est déjà dans l'en-tête (sous le compte à rebours) :
-    // l'intro renvoie seulement au calendrier, où le jour du terme est marqué 🎯
-    const dueLine = isNaN(parseDay(cfg.dueDate)) ? "" : "Sera-t-elle pile à l'heure, en avance ou en retard&nbsp;? Le jour du terme est marqué 🎯 dans le calendrier. ";
-    $("#formIntro").innerHTML = anotherBottle && hasVoted()
-      ? "🍾 Nouvelle bouteille pour un autre moussaillon de cet appareil. Elle aura son propre code de bouteille. " + dueLine
+    // Pas d'intro au-dessus du formulaire : seulement après avoir joué
+    // (ou pour une nouvelle bouteille sur le même appareil)
+    const intro = anotherBottle && hasVoted()
+      ? "🍾 Nouvelle bouteille pour un autre moussaillon de cet appareil. Elle aura son propre code de bouteille."
       : voted
       ? "Ta bouteille est à la mer 💙 Voici ce que tu as joué. Les courants de l'équipage sont dévoilés juste en dessous&nbsp;!"
-      : dueLine + "Remplis ton parchemin, glisse-le dans la bouteille, et à la naissance on découvrira qui avait vu juste. Pas de points, pas de pression : juste pour le plaisir&nbsp;! Les courants de l'équipage (les tendances anonymes) se dévoilent une fois que tu as joué.";
+      : "";
+    $("#formIntro").innerHTML = intro;
+    if (!intro) $("#formIntro").hidden = true;
     $("#heroSub").textContent = state.born
       ? "Elle est arrivée ! Découvre qui a eu le meilleur flair 🏆"
       : "Une petite fille va bientôt rejoindre l'équipage : devine quand elle pointera le bout de sa nageoire !"; // la date du terme est sous le compte à rebours
