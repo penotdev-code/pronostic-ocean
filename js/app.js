@@ -330,7 +330,7 @@
     $("#cdSeconds").textContent = String(Math.floor((diff % 60000) / 1000)).padStart(2, "0");
     caption.textContent = late
       ? "🐢 Elle prend son temps… le terme est dépassé depuis tout ça !"
-      : "avant le terme prévu, le " + fmtDay(cfg.dueDate, { year: "numeric" });
+      : "avant le terme, prévu le " + fmtDay(cfg.dueDate, { year: "numeric" }).replace(/ 1 /, " 1er ");
   }
 
   function renderDeadline() {
@@ -946,7 +946,7 @@
       : dueLine + "Remplis ton parchemin, glisse-le dans la bouteille, et à la naissance on découvrira qui avait vu juste. Pas de points, pas de pression : juste pour le plaisir&nbsp;! Les courants de l'équipage (les tendances anonymes) se dévoilent une fois que tu as joué.";
     $("#heroSub").textContent = state.born
       ? "Elle est arrivée ! Découvre qui a eu le meilleur flair 🏆"
-      : "Une petite fille va bientôt rejoindre l'équipage." + (due ? " Le terme est prévu le " + due + " : devine quand elle pointera le bout de sa nageoire !" : " Devine quand elle pointera le bout de sa nageoire !");
+      : "Une petite fille va bientôt rejoindre l'équipage : devine quand elle pointera le bout de sa nageoire !"; // la date du terme est sous le compte à rebours
   }
 
   /* ---------------- Tableau de bord du capitaine ---------------- */
