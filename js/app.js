@@ -857,9 +857,10 @@
     const again = $("#anotherBottleBtn");
     if (again)
       again.addEventListener("click", () => {
-        anotherBottle = !anotherBottle;
-        renderAll();
-        if (anotherBottle) setTimeout(() => $("#predictionForm").scrollIntoView({ behavior: "smooth", block: "start" }), 50);
+        if (anotherBottle) {
+          anotherBottle = false;
+          renderAll();
+        } else startAnotherBottle();
       });
     box.querySelectorAll("[data-copy]").forEach((b) =>
       b.addEventListener("click", async () => {
@@ -874,7 +875,22 @@
     );
   }
 
+  // Lance le formulaire pour une nouvelle bouteille (autre joueur, même appareil)
+  function startAnotherBottle() {
+    anotherBottle = true;
+    renderAll();
+    setTimeout(() => $("#predictionForm").scrollIntoView({ behavior: "smooth", block: "start" }), 50);
+  }
+
   function initRecover() {
+    $("#ctaRecover").addEventListener("click", () => {
+      $("#recoverError").textContent = "";
+      $("#recoverModal").showModal();
+    });
+    $("#ctaAnother").addEventListener("click", (e) => {
+      e.preventDefault();
+      startAnotherBottle();
+    });
     $("#recoverForm").addEventListener("submit", async (e) => {
       e.preventDefault();
       const err = $("#recoverError");
@@ -884,7 +900,9 @@
       try {
         await store.recover(code);
         e.target.reset();
-        $("#recoverBox").open = false;
+        $("#recoverModal").close();
+        anotherBottle = false;
+        renderAll();
         toast("🍾 Bouteille retrouvée ! Bon retour à bord 💙", 4000);
         setTimeout(() => $("#myBottle").scrollIntoView({ behavior: "smooth", block: "center" }), 300);
       } catch (ex) {
@@ -909,7 +927,10 @@
     $("#formIntro").hidden = !open;
     $("#ctaPredict").hidden = !open && !voted;
     $("#ctaPredict").textContent = voted ? "📜 Voir ma bouteille" : "🍾 Jeter ma bouteille à la mer";
-    $("#recoverBox").hidden = !store.recover || auth.isAdmin || hasVoted();
+    // En haut de page : « Lancer une nouvelle bouteille » une fois joué, et
+    // « Retrouver ma bouteille » toujours disponible (serveur maison uniquement)
+    $("#ctaAnother").hidden = !open || !voted;
+    $("#ctaRecover").hidden = !store.recover;
     const note = $("#closedNote");
     note.hidden = open;
     if (state.born) note.textContent = "⚓ Elle est arrivée ! Les pronostics sont fermés. Merci à tous les moussaillons.";

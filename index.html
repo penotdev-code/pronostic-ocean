@@ -51,6 +51,8 @@
 
       <div class="hero__actions">
         <a class="btn btn--coral" href="#pronostic" id="ctaPredict">🍾 Jeter ma bouteille à la mer</a>
+        <a class="btn btn--coral" href="#pronostic" id="ctaAnother" hidden>🍾 Lancer une nouvelle bouteille</a>
+        <button type="button" class="btn btn--ghost" id="ctaRecover">🔑 Retrouver ma bouteille</button>
         <a class="btn btn--ghost" href="#courants">Voir les courants</a>
       </div>
     </div>
@@ -135,14 +137,6 @@
 
         <!-- Ma bouteille : mes réponses + mon code pour les retrouver ailleurs -->
         <div class="my-bottle" id="myBottle" hidden></div>
-        <details class="recover" id="recoverBox" hidden>
-          <summary>🔑 Tu as déjà joué sur un autre appareil&nbsp;? Retrouve ta bouteille</summary>
-          <form id="recoverForm" class="recover__form">
-            <input type="text" name="code" placeholder="Ex. K7QM-3XPA" autocomplete="off" autocapitalize="characters" spellcheck="false" maxlength="12" aria-label="Code de bouteille" required />
-            <button type="submit" class="btn btn--coral">Retrouver</button>
-          </form>
-          <p class="form__error" id="recoverError" role="alert"></p>
-        </details>
 
         <form class="parchment" id="predictionForm" novalidate>
           <fieldset class="field field--wide">
@@ -253,6 +247,18 @@
   </footer>
 
   <!-- ============ ESPACE CAPITAINE ============ -->
+  <!-- ============ RETROUVER SA BOUTEILLE AVEC SON CODE ============ -->
+  <dialog class="modal modal--code" id="recoverModal" aria-labelledby="recoverModalTitle">
+    <form method="dialog" class="modal__close-form"><button class="modal__close" aria-label="Fermer">✕</button></form>
+    <h2 id="recoverModalTitle">🔑 Retrouver ma bouteille</h2>
+    <p>Tu as déjà joué, sur ce téléphone ou un autre&nbsp;? Entre ton code de bouteille pour retrouver tes réponses.</p>
+    <form id="recoverForm" class="recover__form">
+      <input type="text" name="code" placeholder="Ex. K7QM-3XPA" autocomplete="off" autocapitalize="characters" spellcheck="false" maxlength="12" aria-label="Code de bouteille" required />
+      <button type="submit" class="btn btn--coral">Retrouver</button>
+    </form>
+    <p class="form__error" id="recoverError" role="alert"></p>
+  </dialog>
+
   <!-- ============ CODE DE BOUTEILLE (après avoir joué) ============ -->
   <dialog class="modal modal--code" id="codeModal" aria-labelledby="codeModalTitle">
     <h2 id="codeModalTitle">🔑 Ton code de bouteille</h2>
