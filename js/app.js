@@ -936,13 +936,13 @@
     if (state.born) note.textContent = "⚓ Elle est arrivée ! Les pronostics sont fermés. Merci à tous les moussaillons.";
     else if (!state.open) note.textContent = "⚓ Les pronostics sont fermés : la marée est passée ! Merci à tous les moussaillons.";
     else if (deadlinePassed()) note.textContent = "⏳ Les votes sont clos depuis le " + fmtDateTime(state.deadline) + ". Rendez-vous à la naissance pour les résultats !";
-    // L'intro rappelle le terme prévu pour aiguiller les joueurs
-    const due = isNaN(parseDay(cfg.dueDate)) ? "" : fmtDay(cfg.dueDate, { year: "numeric" });
-    const dueLine = due ? `🎯 Le terme est prévu le <b>${esc(due)}</b>. Sera-t-elle pile à l'heure, en avance ou en retard&nbsp;? ` : "";
+    // La date du terme est déjà dans l'en-tête (sous le compte à rebours) :
+    // l'intro renvoie seulement au calendrier, où le jour du terme est marqué 🎯
+    const dueLine = isNaN(parseDay(cfg.dueDate)) ? "" : "Sera-t-elle pile à l'heure, en avance ou en retard&nbsp;? Le jour du terme est marqué 🎯 dans le calendrier. ";
     $("#formIntro").innerHTML = anotherBottle && hasVoted()
-      ? dueLine + "🍾 Nouvelle bouteille pour un autre moussaillon de cet appareil. Elle aura son propre code de bouteille."
+      ? "🍾 Nouvelle bouteille pour un autre moussaillon de cet appareil. Elle aura son propre code de bouteille. " + dueLine
       : voted
-      ? dueLine + "Ta bouteille est à la mer 💙 Voici ce que tu as joué. Les courants de l'équipage sont dévoilés juste en dessous&nbsp;!"
+      ? "Ta bouteille est à la mer 💙 Voici ce que tu as joué. Les courants de l'équipage sont dévoilés juste en dessous&nbsp;!"
       : dueLine + "Remplis ton parchemin, glisse-le dans la bouteille, et à la naissance on découvrira qui avait vu juste. Pas de points, pas de pression : juste pour le plaisir&nbsp;! Les courants de l'équipage (les tendances anonymes) se dévoilent une fois que tu as joué.";
     $("#heroSub").textContent = state.born
       ? "Elle est arrivée ! Découvre qui a eu le meilleur flair 🏆"

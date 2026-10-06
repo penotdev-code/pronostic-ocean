@@ -9,7 +9,7 @@ window.OCEAN_CONFIG = {
   babyNickname: "notre petite sirène",
 
   // Date prévue de l'accouchement (format AAAA-MM-JJ)
-  dueDate: "2026-12-01",
+  dueDate: "2026-11-20",
 
   // Faire deviner le prénom ? (mettre false si le prénom est déjà connu de tous)
   guessName: true,
