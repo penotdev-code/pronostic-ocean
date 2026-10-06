@@ -640,3 +640,6 @@ input[type="range"] { flex: 1; accent-color: var(--coral); height: 28px; }
 }
 .code-modal__hint { font-size: .92rem; opacity: .85; }
 .code-modal__actions { justify-content: center; margin-top: 16px; }
+
+.my-bottle__again { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 14px; margin-top: 16px; }
+.my-bottle__again small { opacity: .85; }

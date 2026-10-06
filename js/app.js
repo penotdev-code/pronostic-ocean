@@ -37,6 +37,7 @@
   let answers = []; // version anonyme (après avoir joué)
   let allPreds = []; // version complète (capitaine, ou tout le monde après la naissance)
   let myPreds = []; // mes propres pronostics
+  let anotherBottle = false; // un autre joueur veut jouer sur ce même appareil
   // Page annexe /stats : uniquement le tableau de bord du capitaine
   const STATS_PAGE = /^\/stats\/?$/.test(location.pathname);
   let messages = []; // capitaine : tous ; joueur : les siens
@@ -553,6 +554,8 @@
         });
         upd();
         toast("🍾 Bouteille lancée ! Merci " + p.name + " 💙 Les courants te sont dévoilés…", 4500);
+        anotherBottle = false;
+        renderAll();
         const code = store.myCode ? store.myCode() : null;
         // Le code s'affiche dans une fenêtre pour qu'on ne le rate pas ;
         // on descend aux courants une fois qu'elle est fermée
@@ -847,7 +850,20 @@
             <button type="button" class="chip chip--small" id="copyCode">📋 Copier</button></p>
           <small>Note-le bien ! Il te permet de retrouver tes réponses sur un autre téléphone ou ordinateur.</small>
         </div>` : ""}
-      <div class="my-bottle__cards">${cards}</div>`;
+      <div class="my-bottle__cards">${cards}</div>
+      ${votingOpen() ? `
+        <div class="my-bottle__again">
+          <button type="button" class="btn ${anotherBottle ? "btn--ghost-dark" : "btn--coral"}" id="anotherBottleBtn">
+            ${anotherBottle ? "✖ Finalement, pas d'autre bouteille" : "🍾 Lancer une autre bouteille"}</button>
+          ${anotherBottle ? "" : "<small>Pour une autre personne qui joue sur ce même appareil.</small>"}
+        </div>` : ""}`;
+    const again = $("#anotherBottleBtn");
+    if (again)
+      again.addEventListener("click", () => {
+        anotherBottle = !anotherBottle;
+        renderAll();
+        if (anotherBottle) setTimeout(() => $("#predictionForm").scrollIntoView({ behavior: "smooth", block: "start" }), 50);
+      });
     const copy = $("#copyCode");
     if (copy)
       copy.addEventListener("click", async () => {
@@ -894,12 +910,12 @@
     const open = votingOpen();
     // Une fois joué (ou bouteille retrouvée avec un code), plus de formulaire :
     // seulement ses réponses (« Ta bouteille ») et les courants de l'équipage
-    const voted = hasVoted() && !auth.isAdmin;
+    const voted = hasVoted() && !anotherBottle;
     $("#predictionForm").hidden = !open || voted;
     $("#formIntro").hidden = !open;
     $("#ctaPredict").hidden = !open && !voted;
     $("#ctaPredict").textContent = voted ? "📜 Voir ma bouteille" : "🍾 Jeter ma bouteille à la mer";
-    $("#recoverBox").hidden = !store.recover || auth.isAdmin || voted;
+    $("#recoverBox").hidden = !store.recover || auth.isAdmin || hasVoted();
     const note = $("#closedNote");
     note.hidden = open;
     if (state.born) note.textContent = "⚓ Elle est arrivée ! Les pronostics sont fermés. Merci à tous les moussaillons.";
@@ -908,7 +924,9 @@
     // L'intro rappelle le terme prévu pour aiguiller les joueurs
     const due = isNaN(parseDay(cfg.dueDate)) ? "" : fmtDay(cfg.dueDate, { year: "numeric" });
     const dueLine = due ? `🎯 Le terme est prévu le <b>${esc(due)}</b>. Sera-t-elle pile à l'heure, en avance ou en retard&nbsp;? ` : "";
-    $("#formIntro").innerHTML = voted
+    $("#formIntro").innerHTML = anotherBottle && hasVoted()
+      ? dueLine + "🍾 Nouvelle bouteille pour un autre moussaillon de cet appareil. Elle aura le même code de bouteille que la première."
+      : voted
       ? dueLine + "Ta bouteille est à la mer 💙 Voici ce que tu as joué. Les courants de l'équipage sont dévoilés juste en dessous&nbsp;!"
       : dueLine + "Remplis ton parchemin, glisse-le dans la bouteille, et à la naissance on découvrira qui avait vu juste. Pas de points, pas de pression : juste pour le plaisir&nbsp;! Les courants de l'équipage (les tendances anonymes) se dévoilent une fois que tu as joué.";
     $("#heroSub").textContent = state.born
