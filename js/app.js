@@ -794,7 +794,6 @@
   function renderMyBottle() {
     const box = $("#myBottle");
     const code = store.myCode ? store.myCode() : null;
-    $("#recoverBox").hidden = !store.recover || auth.isAdmin;
     if (!myPreds.length) {
       box.hidden = true;
       return;
@@ -873,9 +872,14 @@
 
   function renderFormState() {
     const open = votingOpen();
-    $("#predictionForm").hidden = !open;
+    // Une fois joué (ou bouteille retrouvée avec un code), plus de formulaire :
+    // seulement ses réponses (« Ta bouteille ») et les courants de l'équipage
+    const voted = hasVoted() && !auth.isAdmin;
+    $("#predictionForm").hidden = !open || voted;
     $("#formIntro").hidden = !open;
-    $("#ctaPredict").hidden = !open;
+    $("#ctaPredict").hidden = !open && !voted;
+    $("#ctaPredict").textContent = voted ? "📜 Voir ma bouteille" : "🍾 Jeter ma bouteille à la mer";
+    $("#recoverBox").hidden = !store.recover || auth.isAdmin || voted;
     const note = $("#closedNote");
     note.hidden = open;
     if (state.born) note.textContent = "⚓ Elle est arrivée ! Les pronostics sont fermés. Merci à tous les moussaillons.";
@@ -884,8 +888,8 @@
     // L'intro rappelle le terme prévu pour aiguiller les joueurs
     const due = isNaN(parseDay(cfg.dueDate)) ? "" : fmtDay(cfg.dueDate, { year: "numeric" });
     const dueLine = due ? `🎯 Le terme est prévu le <b>${esc(due)}</b>. Sera-t-elle pile à l'heure, en avance ou en retard&nbsp;? ` : "";
-    $("#formIntro").innerHTML = hasVoted()
-      ? dueLine + "Tu as déjà jeté ta bouteille 💙 Tu peux en lancer une autre pour quelqu'un qui partage ton téléphone."
+    $("#formIntro").innerHTML = voted
+      ? dueLine + "Ta bouteille est à la mer 💙 Voici ce que tu as joué. Les courants de l'équipage sont dévoilés juste en dessous&nbsp;!"
       : dueLine + "Remplis ton parchemin, glisse-le dans la bouteille, et à la naissance on découvrira qui avait vu juste. Pas de points, pas de pression : juste pour le plaisir&nbsp;! Les courants de l'équipage (les tendances anonymes) se dévoilent une fois que tu as joué.";
     $("#heroSub").textContent = state.born
       ? "Elle est arrivée ! Découvre qui a eu le meilleur flair 🏆"
