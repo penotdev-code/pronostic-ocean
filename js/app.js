@@ -635,7 +635,8 @@
         counts[k].n++;
         counts[k].people.push(p);
       });
-      const rows = Object.values(counts).sort((a, b) => b.n - a.n).slice(0, withNames ? 50 : 6);
+      // Tous les prénoms proposés : les plus cités d'abord, puis par ordre alphabétique
+      const rows = Object.values(counts).sort((a, b) => b.n - a.n || a.label.localeCompare(b.label, "fr"));
       return rows.length ? bars(rows) : '<p class="stat__sub">Personne n\'a encore osé… 🤫</p>';
     };
     const extremes = () => {
@@ -664,7 +665,7 @@
       ${extremes()}
       <div class="stat"><p class="stat__label">Ses cheveux</p>${bars(countBy("hair", HAIR))}</div>
       <div class="stat"><p class="stat__label">Elle ressemblera à…</p>${bars(countBy("looks", LOOKS))}</div>
-      ${cfg.guessName ? `<div class="stat"><p class="stat__label">Prénoms proposés</p>${nameRows()}</div>` : ""}
+      ${cfg.guessName ? `<div class="stat stat--names"><p class="stat__label">Prénoms proposés</p>${nameRows()}</div>` : ""}
       <div class="stat"><p class="stat__label">👨 Papa au début du travail</p>${bars(countBy("papaWhere", WHERE).filter((r) => r.n || withNames))}</div>
       <div class="stat"><p class="stat__label">👩 Maman au début du travail</p>${bars(countBy("mamanWhere", WHERE).filter((r) => r.n || withNames))}</div>
     `;

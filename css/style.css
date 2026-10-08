@@ -643,3 +643,6 @@ input[type="range"] { flex: 1; accent-color: var(--coral); height: 28px; }
 
 .my-bottle__again { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 14px; margin-top: 16px; }
 .my-bottle__again small { opacity: .85; }
+
+/* Prénoms proposés : la liste complète, avec défilement si elle est longue */
+.stat--names .bars { max-height: 340px; overflow-y: auto; padding-right: 4px; }
