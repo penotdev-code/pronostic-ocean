@@ -280,6 +280,12 @@
     $("#footerBaby").textContent = cfg.babyNickname || "notre petite sirène";
     if (!cfg.guessName) $("#nameField").remove();
     if (store.mode === "demo") $("#demoBanner").hidden = false;
+    if (store.mode === "preview") {
+      $("#demoBanner").hidden = false;
+      $("#demoBanner").innerHTML = new URLSearchParams(location.search).get("demo") === "reveal"
+        ? '🧪 Démo du récap final avec un équipage fictif : rien n\'est enregistré. <a href="?demo">Rejouer l\'annonce</a>'
+        : "🧪 Démo avec un équipage fictif : rien n'est enregistré. Clique sur l'ancre ⚓ tout en bas (n'importe quel email / mot de passe) pour annoncer la naissance.";
+    }
   }
   function renderParents() {
     $("#footerParents").textContent = cfg.parents || "";

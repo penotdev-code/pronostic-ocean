@@ -33,9 +33,12 @@
     });
   }
 
-  /* ---------------- Mode démo (localStorage) ---------------- */
-  function createLocalStore() {
+  /* ---------------- Mode démo (localStorage) ----------------
+     Avec `seed`, rien n'est lu ni écrit dans le navigateur : la démo
+     repart de zéro à chaque rechargement. */
+  function createLocalStore(seed) {
     const read = (k, fallback) => {
+      if (seed) return fallback;
       try {
         const v = localStorage.getItem(k);
         return v ? JSON.parse(v) : fallback;
@@ -44,6 +47,7 @@
       }
     };
     const write = (k, v) => {
+      if (seed) return;
       try {
         localStorage.setItem(k, JSON.stringify(v));
       } catch (e) {}
@@ -53,13 +57,19 @@
       uid = "u" + Math.random().toString(36).slice(2, 10);
       write("ocean.uid", uid);
     }
+    if (seed) uid = "demo-moi";
     let predictions = read("ocean.predictions", []);
     let messages = read("ocean.messages", []);
     let state = Object.assign({}, DEFAULT_STATE, read("ocean.state", {}));
     let admin = false;
     try {
-      admin = sessionStorage.getItem("ocean.demoAdmin") === "1";
+      admin = !seed && sessionStorage.getItem("ocean.demoAdmin") === "1";
     } catch (e) {}
+    if (seed) {
+      predictions = seed.predictions;
+      messages = seed.messages;
+      state = Object.assign(state, seed.state);
+    }
 
     const subs = new Set();
     const emit = () => subs.forEach((s) => s());
@@ -73,7 +83,7 @@
     const emitAuth = () => authCbs.forEach((cb) => cb({ isAdmin: admin, email: admin ? "capitaine (démo)" : null, uid }));
 
     return {
-      mode: "demo",
+      mode: seed ? "preview" : "demo",
       ready: Promise.resolve(),
       onAuth(cb) {
         authCbs.push(cb);
@@ -122,14 +132,14 @@
       // En démo, n'importe quel email / mot de passe ouvre l'espace capitaine
       async login() {
         admin = true;
-        try {
+        if (!seed) try {
           sessionStorage.setItem("ocean.demoAdmin", "1");
         } catch (e) {}
         emitAuth();
       },
       async logout() {
         admin = false;
-        try {
+        if (!seed) try {
           sessionStorage.removeItem("ocean.demoAdmin");
         } catch (e) {}
         emitAuth();
@@ -383,6 +393,42 @@
         await write("POST", "/recover", { code });
       },
     };
+  }
+
+  /* ---------------- Démo du récap final (?demo ou ?demo=reveal) ----------------
+     Un équipage fictif, en mémoire seulement : rien n'est envoyé au serveur.
+     ?demo        : avant la naissance, on l'annonce soi-même depuis l'espace capitaine (⚓)
+     ?demo=reveal : la naissance est déjà annoncée */
+  function demoSeed(reveal) {
+    const crew = [
+      // nom, avatar, date, heure, poids, taille, cheveux, ressemblance, papa, maman, prénom
+      ["Toi (démo)", "🐬", "2026-11-17", "04:15", 3450, 51, "brun", "both", "maison", "lit", "Lina"],
+      ["Tata Julie", "🐙", "2026-11-18", "03:30", 3400, 50, "brun", "maman", "lit", "lit", "Alba"],
+      ["Papi Jean", "🐢", "2026-11-25", "14:00", 3600, 51, "none", "papa", "travail", "maison", "Louise"],
+      ["Mamie Odette", "🐚", "2026-11-20", "08:20", 3280, 49.5, "chatain", "both", "maison", "maison", "Lina"],
+      ["Tonton Marc", "🦈", "2026-11-12", "22:45", 3050, 48, "blond", "papa", "route", "douche", "Jade"],
+      ["Clara", "🧜‍♀️", "2026-11-19", "05:00", 3300, 50, "chatain", "maman", "lit", "lit", "Nina"],
+      ["Hugo", "🏴‍☠️", "2026-12-01", "12:12", 3900, 52, "roux", "papa", "sortie", "sortie", "Ariel"],
+      ["Sophie", "🪼", "2026-11-21", "18:30", 3150, 48.5, "none", "both", "courses", "courses", "Lou"],
+      ["Léo", "🦀", "2026-11-16", "01:10", 3500, 50.5, "brun", "maman", "lit", "maternite", "Mila"],
+    ];
+    const t0 = Date.UTC(2026, 9, 1);
+    const predictions = crew.map((c, i) => ({
+      id: "demo" + i,
+      uid: i ? "demo-" + i : "demo-moi",
+      code: i ? undefined : "DEMO-1234",
+      name: c[0], avatar: c[1], date: c[2], time: c[3], weight: c[4], height: c[5],
+      hair: c[6], looks: c[7], papaWhere: c[8], mamanWhere: c[9], babyName: c[10],
+      createdAt: t0 + i * 3600000,
+    }));
+    const messages = [{ id: "demo0", uid: "demo-moi", name: crew[0][0], avatar: crew[0][1], text: "Bienvenue petite sirène, on a hâte de te rencontrer ! 💙", createdAt: t0 }];
+    const result = { date: "2026-11-18", time: "03:47", weight: 3280, height: 49.5, hair: "chatain", looks: "both", papaWhere: "lit", mamanWhere: "lit", babyName: "Lina", note: "Arrivée en douceur au milieu de la nuit 🌙" };
+    return { predictions, messages, state: reveal ? { open: false, born: true, result } : { open: true, born: false } };
+  }
+  const demoParam = new URLSearchParams(location.search).get("demo");
+  if (demoParam !== null) {
+    window.OceanStore = createLocalStore(demoSeed(demoParam === "reveal"));
+    return;
   }
 
   window.OceanStore = hasFirebase ? createFirebaseStore() : cfg.api ? createApiStore() : createLocalStore();

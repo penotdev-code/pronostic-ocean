@@ -59,4 +59,8 @@ node server/server.js
 # puis ouvre http://localhost:3000
 ```
 
+**Démo du récap final** (équipage fictif, rien n'est enregistré ni envoyé au serveur) :
+- `?demo=reveal` : la naissance est déjà annoncée, on voit directement le récap ;
+- `?demo` : avant la naissance, on l'annonce soi-même depuis l'ancre ⚓ (n'importe quel email / mot de passe).
+
 Sans Node, en mode démo : mettre `api: ""` dans `js/config.js` puis `python3 -m http.server 8000`.
