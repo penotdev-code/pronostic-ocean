@@ -1,0 +1,21 @@
+# =============================================================================
+#  Déploiement Dokploy (https://dokploy.paulpenot.fr)
+#  - Domaine, HTTPS et middlewares (compress, rate-limit) : réglés dans Dokploy.
+#  - Secrets (ADMIN_EMAIL, ADMIN_PASSWORD_HASH) : onglet « Environment » de Dokploy.
+#  - Chaque push sur la branche publiée redéploie automatiquement.
+# =============================================================================
+services:
+  web:
+    build: .
+    restart: unless-stopped
+    env_file:
+      - path: .env
+        required: false
+    volumes:
+      - data:/data
+
+volumes:
+  # Volume existant du VPS (pris en compte par la sauvegarde nocturne)
+  data:
+    name: petite-sirene_data
+    external: true
